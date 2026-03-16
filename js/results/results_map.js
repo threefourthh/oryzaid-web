@@ -2,21 +2,24 @@
 import { apiGet } from "../core/api.js";
 
 export function initResultsMap({ mapId = "map" } = {}) {
-  const SAFE_MAX_ZOOM = 18;
+  // 1. Unlocking deeper zoom levels
+  const ACTUAL_MAX_ZOOM = 22; // How far you can actually zoom in
+  const MAX_NATIVE_ZOOM = 19; // When Esri stops providing new images and Leaflet starts stretching them
 
   const map = L.map(mapId, {
-    maxZoom: SAFE_MAX_ZOOM,
+    maxZoom: ACTUAL_MAX_ZOOM,
     preferCanvas: true,
   });
   window.map = map;
 
   map.setView([17.6534, 121.7334], 18);
 
+  // 2. Add the native zoom limit to the tile layer
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     {
-      maxZoom: SAFE_MAX_ZOOM,
-      maxNativeZoom: SAFE_MAX_ZOOM,
+      maxZoom: ACTUAL_MAX_ZOOM,
+      maxNativeZoom: MAX_NATIVE_ZOOM, 
       crossOrigin: true,
       attribution: "Tiles &copy; Esri &mdash; Source: Esri",
     }
@@ -75,7 +78,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
     let lat = parseFloat(det.latitude ?? det.lat ?? det.gps_lat ?? det.center_lat);
     let lng = parseFloat(det.longitude ?? det.lng ?? det.lon ?? det.gps_lng ?? det.center_lng);
 
-    // 🔥 FIXED: Always use the exact center of the yellow boundary box if DB coords are missing
+    // 🔥 FOOLPROOF FALLBACK: Use the exact center of the yellow boundary box if DB coords are missing
     if (isNaN(lat) || isNaN(lng)) {
       let baseLat = 17.6534;
       let baseLng = 121.7334;
@@ -214,11 +217,12 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
     updatePercentages(detections);
 
+    // 3. Keep heat layers visible even when zooming all the way in
     if (diseasePoints.length > 0) {
       diseaseHeatLayer = L.heatLayer(diseasePoints, {
         radius: 40,
         blur: 25,
-        maxZoom: SAFE_MAX_ZOOM,
+        maxZoom: ACTUAL_MAX_ZOOM, 
         minOpacity: 0.6,
         gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "red" }
       });
@@ -228,7 +232,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
       pestHeatLayer = L.heatLayer(pestPoints, {
         radius: 40,
         blur: 25,
-        maxZoom: SAFE_MAX_ZOOM,
+        maxZoom: ACTUAL_MAX_ZOOM, 
         minOpacity: 0.6,
         gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "#cc6600" }
       });
@@ -247,15 +251,15 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
       clearLayers();
 
-      // 1. Draw boundary
+      // Draw boundary
       renderFieldBoundary(mission);
 
-      // 2. Instantly snap to the field without animating (Fixes the race condition)
+      // Instantly snap to the field without animating
       if (window.fieldBoundaryLayer) {
         map.fitBounds(window.fieldBoundaryLayer.getBounds(), { padding: [10, 10], animate: false });
       }
 
-      // 3. Drop the heatmaps directly inside the boundary
+      // Drop the heatmaps directly inside the boundary
       renderHeatmaps(detections, mission);
 
       window.dispatchEvent(new CustomEvent("maizeeye:mission-data-loaded", { detail: { mission, detections } }));

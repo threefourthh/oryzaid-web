@@ -1,5 +1,4 @@
 // js/results/ai_summary.js
-import { apiGet } from "../core/api.js";
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -24,8 +23,13 @@ function computeSummary(detections = []) {
   let low = 0;
 
   for (const d of detections) {
-    const conf = Number(d.confidence ?? d.score ?? 0);
+    let conf = Number(d.confidence ?? d.score ?? 0);
+    
+    // Normalize in case the database saves it as 95 instead of 0.95
+    if (conf > 1) conf = conf / 100;
+
     sum += conf;
+
     if (conf >= 0.85) high++;
     else if (conf >= 0.6) medium++;
     else low++;
@@ -40,19 +44,11 @@ function computeSummary(detections = []) {
   };
 }
 
-async function loadAiSummary(missionId) {
-  try {
-    // FIX: Removed "/detections" to match your actual Render API route
-    const payload = await apiGet(`/missions/${missionId}`);
-
-    let detections = [];
+export function initAiSummary() {
+  // 🔥 THE FIX: Just wait for the map to finish loading its data, then instantly grab a copy!
+  window.addEventListener("maizeeye:mission-data-loaded", (e) => {
     
-    // Extract detections safely from the payload
-    if (Array.isArray(payload)) detections = payload;
-    else if (payload?.detections) detections = payload.detections;
-    else if (payload?.data?.detections) detections = payload.data.detections;
-    else if (payload?.results) detections = payload.results;
-
+    const detections = e.detail?.detections || [];
     const s = computeSummary(detections);
 
     setText("aiTotalDetections", s.total);
@@ -60,16 +56,7 @@ async function loadAiSummary(missionId) {
     setText("aiHighConfidence", s.high);
     setText("aiMediumConfidence", s.medium);
     setText("aiLowConfidence", s.low);
-
-  } catch (err) {
-    console.warn("AI summary failed:", err);
-  }
-}
-
-export function initAiSummary() {
-  window.addEventListener("maizeeye:mission-selected", (e) => {
-    const missionId = e?.detail?.missionId || e?.detail?.id || e?.detail;
-    if (!missionId) return;
-    loadAiSummary(missionId);
+    
+    console.log("✅ AI Summary updated using map data!");
   });
 }
