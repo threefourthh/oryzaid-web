@@ -7,7 +7,8 @@ import { initReportPDF } from "./report_pdf.js";
 import { initCenterNotif } from "../drawmap/center_notif.js";
 import { initAiSummary } from "./ai_summary.js";
 
-setApiBaseFromWindowOrDefault("https://maize-eye-final.onrender.com");
+// Set the base URL to your new Render backend
+setApiBaseFromWindowOrDefault("https://oryzaid-api.onrender.com");
 
 window.addEventListener("DOMContentLoaded", () => {
   initCenterNotif();

@@ -1,5 +1,5 @@
 // js/core/api.js
-const DEFAULT_API = "https://maize-eye-final.onrender.com";
+const DEFAULT_API = "https://oryzaid-api.onrender.com";
 
 let API_BASE =
   (typeof window !== "undefined" && window.MAIZEEYE_API_BASE) || DEFAULT_API;
