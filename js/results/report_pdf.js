@@ -618,59 +618,25 @@ function buildRecommendations(assessment, detected) {
   const tips = [];
   const { dominantType, dominantSeverity } = assessment;
 
+  // Agricultural Countermeasures based on detected issues
+  const countermeasures = {
+    "Bacterial Leaf Blight": "Countermeasure: Drain the field for 2-3 days to reduce humidity. Avoid excessive nitrogen fertilizer and apply copper-based bactericides if infection persists.",
+    "Fungal Spot": "Countermeasure: Apply balanced fertilization with a focus on increasing Potash (K). Remove infected crop residue and use recommended fungicides like Mancozeb.",
+    "Leaf Scald": "Countermeasure: Improve aeration by ensuring proper plant spacing. Use certified clean seeds for the next cycle and apply protective fungicides if symptoms appear early.",
+    "Tungro": "Countermeasure: Manage Green Leafhopper vectors immediately with insecticide. Rogue (remove) infected plants from the field to prevent the virus from spreading.",
+    "Rice Hispa": "Countermeasure: Look for chewing damage and clip leaf tips before transplanting to remove eggs. Maintain clean field borders and use contact insecticides if adults exceed one per leaf."
+  };
+
+  detected.forEach(issue => {
+    if (countermeasures[issue.label]) {
+      tips.push(countermeasures[issue.label]);
+    }
+  });
+
   if (dominantType === "Disease") {
     if (dominantSeverity === "High") {
-      tips.push(
-        "Disease presence appears high in the most affected zones. Inspect these areas immediately and isolate the worst-affected sections if possible.",
-        "Consult a local agriculturist soon regarding suitable disease control measures and the proper timing of fungicide application.",
-        "Prioritize sanitation by removing heavily infected leaves or plant debris when practical to help reduce further spread."
-      );
-    } else if (dominantSeverity === "Medium") {
-      tips.push(
-        "Disease indicators are at a moderate level. Inspect the affected parts of the field closely within the next monitoring cycle.",
-        "Track whether leaf damage is spreading and prepare early treatment if symptoms continue increasing.",
-        "Keep the field clean and avoid leaving infected plant material in place for too long."
-      );
-    } else {
-      tips.push(
-        "Only low disease presence was observed. Continue close monitoring of affected leaves before the issue becomes more widespread.",
-        "Mark the affected zones and recheck them in the next scan for changes in severity."
-      );
+      tips.push("Consult a local agriculturist soon regarding suitable disease control measures and the proper timing of treatment application.");
     }
-  }
-
-  if (dominantType === "Pest") {
-    if (dominantSeverity === "High") {
-      tips.push(
-        "Pest-related damage appears high in the most affected zones. Field inspection should be done as soon as possible.",
-        "Check the crop early in the morning or late afternoon to confirm active pest presence and feeding damage.",
-        "Apply integrated pest management practices and consult local agriculture officers before using pesticide treatment."
-      );
-    } else if (dominantSeverity === "Medium") {
-      tips.push(
-        "Pest activity appears moderate. Inspect the identified zones and monitor whether feeding damage is increasing.",
-        "Focus first on the most affected sections to reduce the chance of wider spread across the field."
-      );
-    } else {
-      tips.push(
-        "Only low pest activity was observed. Continue spot-checking plants in the highlighted zones.",
-        "Maintain regular monitoring so early pest buildup can be addressed quickly."
-      );
-    }
-  }
-
-  const labels = detected.map((d) => d.label);
-
-  if (
-    labels.includes("Bacterial Leaf Blight") ||
-    labels.includes("Fungal Spot") ||
-    labels.includes("Leaf Scald") ||
-    labels.includes("Tungro")
-  ) {
-    tips.push("Inspect rice leaves closely for visible lesions, blight patterns, or discoloration in the highlighted areas.");
-  }
-  if (labels.includes("Rice Hispa")) {
-    tips.push("Look for chewing damage and insect presence in the highlighted sections, especially around younger plants.");
   }
 
   tips.push(
