@@ -1,3 +1,4 @@
+// js/results/results_map.js
 import { apiGet } from "../core/api.js";
 
 export function initResultsMap({ mapId = "map" } = {}) {
@@ -121,18 +122,19 @@ export function initResultsMap({ mapId = "map" } = {}) {
   }
 
   function getIntensity(det) {
+    // FIX: Math updated to properly scale 0-100% to a strong 0.4 - 1.0 intensity map
     const area = safeNum(det.affected_area_percent);
     if (area != null) {
-      return Math.max(0.08, Math.min(0.32, area / 260));
+      return Math.max(0.4, Math.min(1.0, 0.4 + (area / 100) * 0.6));
     }
 
     const conf = safeNum(det.confidence);
     if (conf != null) {
       const normalized = conf > 1 ? conf / 100 : conf;
-      return Math.max(0.08, Math.min(0.28, normalized * 0.35));
+      return Math.max(0.4, Math.min(1.0, 0.4 + normalized * 0.6));
     }
 
-    return 0.12;
+    return 0.6;
   }
 
   function isDisease(label) {
@@ -212,68 +214,25 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   function makeHeatLayer(points, gradient) {
     return L.heatLayer(points, {
-      radius: 22,
-      blur: 30,
+      radius: 35,      // FIX: Increased from 22 so blobs are highly visible
+      blur: 20,        // FIX: Decreased from 30 so colors are more solid
       maxZoom: 18,
-      minOpacity: 0.16,
+      minOpacity: 0.4, // FIX: Raised base opacity
       gradient,
     });
   }
 
-  function getLayerCanvas(layer) {
-    return layer?._canvas || null;
-  }
-
-  function setLayerOpacity(layer, value) {
-    const canvas = getLayerCanvas(layer);
-    if (!canvas) return;
-    canvas.style.opacity = String(value);
-  }
-
-  function fadeLayer(layer, show, duration = 220) {
-    if (!layer) return;
-
-    const canvas = getLayerCanvas(layer);
-    if (!canvas) {
-      if (show) {
-        if (!map.hasLayer(layer)) layer.addTo(map);
-      } else {
-        if (map.hasLayer(layer)) map.removeLayer(layer);
-      }
-      return;
-    }
-
-    let start = null;
-    const from = show ? 0 : 1;
-    const to = show ? 1 : 0;
-
-    if (show && !map.hasLayer(layer)) layer.addTo(map);
-
-    canvas.style.transition = "none";
-    canvas.style.opacity = String(from);
-
-    function step(ts) {
-      if (!start) start = ts;
-      const progress = Math.min((ts - start) / duration, 1);
-      const value = from + (to - from) * progress;
-      canvas.style.opacity = String(value);
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        canvas.style.opacity = String(to);
-        if (!show && map.hasLayer(layer)) {
-          map.removeLayer(layer);
-        }
-      }
-    }
-
-    requestAnimationFrame(step);
-  }
-
   function applyVisibility() {
-    if (diseaseHeatLayer) fadeLayer(diseaseHeatLayer, diseaseVisible);
-    if (pestHeatLayer) fadeLayer(pestHeatLayer, pestVisible);
+    // FIX: Removed the buggy custom canvas fader and rely entirely on native Leaflet toggles
+    if (diseaseHeatLayer) {
+      if (diseaseVisible && !map.hasLayer(diseaseHeatLayer)) diseaseHeatLayer.addTo(map);
+      if (!diseaseVisible && map.hasLayer(diseaseHeatLayer)) map.removeLayer(diseaseHeatLayer);
+    }
+    
+    if (pestHeatLayer) {
+      if (pestVisible && !map.hasLayer(pestHeatLayer)) pestHeatLayer.addTo(map);
+      if (!pestVisible && map.hasLayer(pestHeatLayer)) map.removeLayer(pestHeatLayer);
+    }
 
     if (diseaseVisible) {
       if (!map.hasLayer(diseaseMarkersLayer)) map.addLayer(diseaseMarkersLayer);
@@ -333,9 +292,8 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   function markerPopupHtml(det) {
     const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-    const displayName = firstNonEmpty(det.class_name, det.label, det.issue_type, label);
+    const displayName = firstNonEmpty(det.class_name, det.label, det.issue_type, label).replace(/_/g, ' ');
     const severity = firstNonEmpty(det.severity_level, det.severity, "—");
-    const group = firstNonEmpty(det.class_group, "—");
 
     const confidenceRaw = safeNum(det.confidence);
     const confidenceText =
@@ -347,12 +305,13 @@ export function initResultsMap({ mapId = "map" } = {}) {
     const areaText = areaRaw == null ? "—" : `${areaRaw.toFixed(1)}%`;
 
     return `
-      <div style="min-width:180px;">
-        <strong>${displayName}</strong><br>
-        Group: ${group}<br>
-        Severity: ${severity}<br>
-        Confidence: ${confidenceText}<br>
-        Affected Area: ${areaText}
+      <div style="min-width:180px; font-family: 'Inter', sans-serif;">
+        <strong style="color: #9c0096; font-size: 14px;">${displayName}</strong><br>
+        <div style="margin-top: 8px;">
+          <strong>Severity:</strong> ${severity}<br>
+          <strong>Confidence:</strong> ${confidenceText}<br>
+          <strong>Affected Area:</strong> ${areaText}
+        </div>
       </div>
     `;
   }
@@ -454,32 +413,24 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
     updatePercentages(detections);
 
+    // FIX: Updated gradients to match Leaflet standards for maximum visibility
     if (diseasePoints.length > 0) {
       diseaseHeatLayer = makeHeatLayer(diseasePoints, {
-        0.20: "#ffe3e3",
-        0.45: "#ffb0b0",
-        0.70: "#ff6b6b",
-        1.00: "#d62828",
+        0.3: "yellow",
+        0.6: "orange",
+        1.0: "red",
       });
     }
 
     if (pestPoints.length > 0) {
       pestHeatLayer = makeHeatLayer(pestPoints, {
-        0.2: "#ffe0b3",
-        0.4: "#ffb84d",
-        0.7: "#ff8c1a",
+        0.3: "yellow",
+        0.6: "orange",
         1.0: "#cc6600",
       });
     }
 
-    if (diseaseHeatLayer && diseaseVisible) diseaseHeatLayer.addTo(map);
-    if (pestHeatLayer && pestVisible) pestHeatLayer.addTo(map);
-
-    setTimeout(() => {
-      setLayerOpacity(diseaseHeatLayer, diseaseVisible ? 1 : 0);
-      setLayerOpacity(pestHeatLayer, pestVisible ? 1 : 0);
-    }, 60);
-
+    applyVisibility();
     syncAllButtonStates();
   }
 
