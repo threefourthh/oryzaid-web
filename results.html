@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  
+  <!-- Force blank favicon to clear cached tab icons -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>" />
+  
+  <title>OryzAID | Results</title>
+
+  <!-- Fonts: Outfit (Logo) and Inter (UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <!-- Page CSS -->
+  <link rel="stylesheet" href="css/results.css" />
+</head>
+
+<body>
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="Go to home">
+      <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
+    </a>
+
+    <div class="mission-bar" aria-label="Mission controls">
+      <div class="mission-pill" aria-live="polite">
+        <span class="pill-label">Loaded:</span>
+        <span id="missionStatus" class="pill-value">—</span>
+      </div>
+
+      <a class="back" href="missions.html" title="Back to missions">Back</a>
+    </div>
+  </header>
+
+  <!-- MAIN LAYOUT -->
+  <main class="results-layout">
+    <div id="reportRoot" class="report-root">
+
+      <!-- LEFT: MAP STAGE -->
+      <section class="map-stage" aria-label="Map section">
+        <!-- FLOATING LAYER STATUS -->
+        <div class="layer-status-bar" id="layerStatusBar" aria-label="Active heatmap layers">
+          <span class="layer-chip disease on" id="chipDisease">Diseases: ON</span>
+          <span class="layer-chip pest on" id="chipPest">Pests: ON</span>
+          <!-- Removed NPK completely -->
+        </div>
+
+        <!-- MAP -->
+        <div id="map" role="application" aria-label="OryzAID results map"></div>
+      </section>
+
+      <!-- RIGHT: SCROLLING PANEL -->
+      <aside class="panel" aria-label="Results panel">
+
+        <!-- MISSION DETAILS -->
+        <section class="resultbox meta-card" id="missionMetaCard">
+          <div class="top">
+            <span>MISSION DETAILS</span>
+            <img src="assets/icons/info.png" alt="Mission details">
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-item">
+              <span class="meta-label">Mission ID</span>
+              <span class="meta-value" id="metaMissionId">—</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Place</span>
+              <span class="meta-value" id="metaPlace">—</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Area Covered</span>
+              <span class="meta-value" id="metaArea">—</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Flight Altitude</span>
+              <span class="meta-value" id="metaAltitude">—</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Drone ID</span>
+              <span class="meta-value" id="metaDroneId">—</span>
+            </div>
+
+            <div class="meta-item">
+              <span class="meta-label">Capture Time</span>
+              <span class="meta-value" id="metaCaptureTime">—</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- DISEASES (Updated to Rice Diseases) -->
+        <section class="resultbox" id="disresult">
+          <div class="top">
+            <span>DISEASES</span>
+            <img src="assets/icons/virus.png" alt="Diseases">
+          </div>
+
+          <div class="rnow">
+            <button type="button" class="seebutton" id="blbsee" title="Toggle diseases heatmap">
+              <img src="assets/icons/view.png" alt="Toggle visibility">
+            </button>
+            <label for="blbsee">Bacterial Leaf Blight</label>
+            <span id="bacterialLeafBlight">00%</span>
+          </div>
+
+          <div class="rnow">
+            <button type="button" class="seebutton" id="fssee" title="Toggle diseases heatmap">
+              <img src="assets/icons/view.png" alt="Toggle visibility">
+            </button>
+            <label for="fssee">Fungal Spot</label>
+            <span id="fungalSpot">00%</span>
+          </div>
+
+          <div class="rnow">
+            <button type="button" class="seebutton" id="lssee" title="Toggle diseases heatmap">
+              <img src="assets/icons/view.png" alt="Toggle visibility">
+            </button>
+            <label for="lssee">Leaf Scald</label>
+            <span id="leafScald">00%</span>
+          </div>
+
+          <div class="rnow">
+            <button type="button" class="seebutton" id="tsee" title="Toggle diseases heatmap">
+              <img src="assets/icons/view.png" alt="Toggle visibility">
+            </button>
+            <label for="tsee">Tungro</label>
+            <span id="tungro">00%</span>
+          </div>
+        </section>
+
+        <!-- PESTS (Updated to Rice Pests) -->
+        <section class="resultbox" id="pestresult">
+          <div class="top">
+            <span>PESTS</span>
+            <img src="assets/icons/bugs.png" alt="Pests">
+          </div>
+
+          <div class="rnow">
+            <button type="button" class="seebutton" id="rhsee" title="Toggle pests heatmap">
+              <img src="assets/icons/view.png" alt="Toggle visibility">
+            </button>
+            <label for="rhsee">Rice Hispa</label>
+            <span id="riceHispa">00%</span>
+          </div>
+        </section>
+
+        <!-- NPK Deficiency block was successfully deleted -->
+
+        <!-- AI CONFIDENCE / ACCURACY -->
+        <section class="resultbox ai-card" id="aiSummaryCard">
+          <button type="button" class="top collapsible-toggle" id="aiToggleBtn" aria-expanded="false">
+            <span>AI CONFIDENCE & ACCURACY</span>
+            <span class="collapse-icon" id="aiCollapseIcon">+</span>
+          </button>
+
+          <div class="collapsible-content collapsed" id="aiCollapsibleContent">
+            <div class="ai-summary-grid">
+              <div class="meta-item">
+                <span class="meta-label">Total Detections</span>
+                <span class="meta-value" id="aiTotalDetections">0</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-label">Average Confidence</span>
+                <span class="meta-value" id="aiAvgConfidence">0%</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-label">High Confidence</span>
+                <span class="meta-value" id="aiHighConfidence">0</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-label">Medium Confidence</span>
+                <span class="meta-value" id="aiMediumConfidence">0</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-label">Low Confidence</span>
+                <span class="meta-value" id="aiLowConfidence">0</span>
+              </div>
+
+              <div class="meta-item">
+                <span class="meta-label">Reliability</span>
+                <span class="meta-value" id="aiReliability">—</span>
+              </div>
+            </div>
+
+            <div class="ai-divider"></div>
+
+            <div class="ai-model-metrics">
+              <div class="ai-subtitle">Model Validation</div>
+
+              <div class="meta-grid">
+                <div class="meta-item">
+                  <span class="meta-label">Precision</span>
+                  <span class="meta-value" id="aiPrecision">—</span>
+                </div>
+
+                <div class="meta-item">
+                  <span class="meta-label">Recall</span>
+                  <span class="meta-value" id="aiRecall">—</span>
+                </div>
+
+                <div class="meta-item">
+                  <span class="meta-label">mAP50</span>
+                  <span class="meta-value" id="aiMap50">—</span>
+                </div>
+
+                <div class="meta-item">
+                  <span class="meta-label">mAP50-95</span>
+                  <span class="meta-value" id="aiMap5095">—</span>
+                </div>
+
+                <div class="meta-item">
+                  <span class="meta-label">Model Version</span>
+                  <span class="meta-value" id="aiModelVersion">—</span>
+                </div>
+
+                <div class="meta-item">
+                  <span class="meta-label">Last Trained</span>
+                  <span class="meta-value" id="aiLastTrained">—</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="ai-divider"></div>
+
+            <div class="ai-class-summary">
+              <div class="ai-subtitle">Per-Class Confidence</div>
+              <div id="aiClassSummaryList" class="ai-class-list">
+                <div class="ai-class-row">
+                  <span>No class summary yet.</span>
+                </div>
+              </div>
+            </div>
+
+            <p class="ai-note">
+              Note: Live confidence shows model certainty, not final real-world field accuracy.
+            </p>
+          </div>
+        </section>
+
+        <!-- PANEL ACTIONS -->
+        <div class="panel-actions">
+          <button id="downloadPdfBtn" type="button">DOWNLOAD PDF</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Center Notif -->
+  <div id="centerNotif" class="center-notif" aria-hidden="true">
+    <div class="center-notif-card" role="dialog" aria-modal="true" aria-label="Notification">
+      <div id="centerNotifText" class="center-notif-text">—</div>
+      <button id="centerNotifOk" type="button" class="center-notif-ok">OK</button>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <!-- Entry -->
+  <script type="module" src="js/results/app.js"></script>
+</body>
+
+</html>

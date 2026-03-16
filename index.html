@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Blank favicon to overwrite the old cached logo -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>">
+    
+    <title>OryzAID | AI Drone Surveillance for Rice Disease Detection</title>
+    <meta name="description"
+        content="OryzAID is an AI-powered drone surveillance system for rice crop health monitoring and disease detection with actionable maps and insights." />
+    <meta name="theme-color" content="#9c0096" />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+    
+    <!-- Updated to Outfit (For the bold logo) and Inter (For UI) -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- CSS (modular) -->
+    <link rel="stylesheet" href="css/base.css" />
+    <link rel="stylesheet" href="css/header.css" />
+    <link rel="stylesheet" href="css/index.css" />
+</head>
+
+<body id="top">
+
+    <!-- NAV -->
+    <nav id="navbar" aria-label="Primary navigation">
+        <div class="nav-inner">
+            <a class="logo" href="#home" aria-label="Go to home section">
+                <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
+            </a>
+
+            <button class="nav-toggle" type="button" aria-label="Open menu" aria-controls="nav-links"
+                aria-expanded="false">
+                ☰
+            </button>
+
+            <ul id="nav-links">
+                <li><a href="#home" class="nav-link active">Home</a></li>
+                <li><a href="#process" class="nav-link">Process</a></li>
+                <li><a href="#technology" class="nav-link">Technology</a></li>
+                <li><a href="#about" class="nav-link">About</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <header class="hero" id="home">
+        <div class="hero-inner">
+            <h1>Every Grain Is Worth Protecting</h1>
+            <h2>AI-Powered Drone Surveillance for Rice Disease Detection</h2>
+            <a href="missions.html" class="btn" aria-label="Open diagnosing dashboard">
+                START DIAGNOSING
+            </a>
+        </div>
+    </header>
+
+    <!-- PROCESS -->
+    <section id="process" class="process-section">
+        <img src="assets/images/field.jpg" alt="Drone surveying a rice field" loading="lazy">
+
+        <div class="process-wrapper">
+            <h2>How OryzAID Works</h2>
+
+            <div class="process-grid">
+                <article class="process-card" id="plan">
+                    <h3>Plan the Mission</h3>
+                    <p>Define the field, set flight paths, and configure imaging parameters for complete coverage.</p>
+                    <span class="step" aria-hidden="true">1</span>
+                </article>
+
+                <article class="process-card" id="cap">
+                    <h3>Capture Field Data</h3>
+                    <p>Autonomous drones collect high-resolution aerial images across the rice paddy.</p>
+                    <span class="step" aria-hidden="true">2</span>
+                </article>
+
+                <article class="process-card" id="ana">
+                    <h3>Analyze Crop Health</h3>
+                    <p>Images are processed to reveal rice leaf diseases and pests infestation.</p>
+                    <span class="step" aria-hidden="true">3</span>
+                </article>
+
+                <article class="process-card" id="del">
+                    <h3 id="las">Deliver Actionable Insights</h3>
+                    <p>Clear maps and reports highlight problem areas for timely intervention.</p>
+                    <span class="step" aria-hidden="true">4</span>
+                </article>
+            </div>
+
+            <p class="process-footer">From flight to field insight.</p>
+        </div>
+    </section>
+
+    <!-- TECHNOLOGY -->
+    <section class="technology" id="technology">
+        <h2>A Layered Intelligence System</h2>
+
+        <div class="layers">
+            <div class="layer dark">
+                <div class="icon-outer" aria-hidden="true">
+                    <div class="icon-inner">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 3h7v7H3V3zm11 0h7v7h-7V3zm-11 11h7v7H3v-7zm11 0h7v7h-7v-7z"/></svg>
+                    </div>
+                </div>
+                <div class="layer-title">Application Layer</div>
+                <div class="content">
+                    <p>Actionable maps, visual reports, and summaries designed for farmers, researchers, and
+                        decision-makers.</p>
+                </div>
+            </div>
+
+            <div class="layer mid">
+                <div class="icon-outer" aria-hidden="true">
+                    <div class="icon-inner">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M4 22h16a1 1 0 000-2H4V4a1 1 0 00-2 0v17a1 1 0 001 1zm4-5h2a1 1 0 001-1v-5a1 1 0 00-1-1H8a1 1 0 00-1 1v5a1 1 0 001 1zm5 0h2a1 1 0 001-1v-8a1 1 0 00-1-1h-2a1 1 0 00-1 1v8a1 1 0 001 1zm5 0h2a1 1 0 001-1v-3a1 1 0 00-1-1h-2a1 1 0 00-1 1v3a1 1 0 001 1z"/></svg>
+                    </div>
+                </div>
+                <div class="layer-title">Analytics Layer</div>
+                <div class="content">
+                    <p>Rice leaf diseases (like rice blast or blight)and pest infestations</p>
+                </div>
+            </div>
+
+            <div class="layer light">
+                <div class="icon-outer" aria-hidden="true">
+                    <div class="icon-inner">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2l10 5-10 5L2 7l10-5zm0 13l-8-4-2 1 10 5 10-5-2-1-8 4zm0 5l-8-4-2 1 10 5 10-5-2-1-8 4z"/></svg>
+                    </div>
+                </div>
+                <div class="layer-title">Processing Layer</div>
+                <div class="content">
+                    <p>Orthomosaic generation, geo-referenced image alignment, and data preparation for analysis.</p>
+                </div>
+            </div>
+
+            <div class="layer very-light">
+                <div class="icon-outer" aria-hidden="true">
+                    <div class="icon-inner">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z"/></svg>
+                    </div>
+                </div>
+                <div class="layer-title">Control Layer</div>
+                <div class="content">
+                    <p>Autonomous flight control, waypoint navigation, mission planning, and repeatable survey
+                        execution.</p>
+                </div>
+            </div>
+
+            <div class="layer faint">
+                <div class="icon-outer" aria-hidden="true">
+                    <div class="icon-inner">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm0 18a8 8 0 118-8 8 8 0 01-8 8zm0-14a6 6 0 106 6 6 6 0 00-6-6zm0 10a4 4 0 114-4 4 4 0 01-4 4z"/></svg>
+                    </div>
+                </div>
+                <div class="layer-title">Sensing Layer</div>
+                <div class="content">
+                    <p>High-resolution aerial imaging systems for accurate rice data acquisition.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section id="about">
+        <div class="about">
+            <h2>Why OryzAID Exists</h2>
+
+            <h3>Our Mission</h3>
+            <p>
+                To empower farmers by providing affordable, intelligent, and practical agricultural technologies that
+                improve crop productivity, reduce losses, and promote sustainable farming across the Philippines.
+            </p>
+
+            <h3>What We Do</h3>
+            <p>
+                We develop a drone-based crop monitoring system that transforms aerial field data into clear, actionable
+                insights.
+                OryzAID enables farmers and researchers to monitor crop health efficiently, reduce unnecessary
+                intervention,
+                and make informed decisions with confidence.
+            </p>
+
+            <h3>Why It Matters</h3>
+            <p>
+                Rice is a critical crop for food security. Traditional field inspection is time-consuming and often
+                reactive.
+                OryzAID provides a proactive approach—allowing issues to be identified early, resources to be applied
+                precisely,
+                and productivity to be improved sustainably.
+            </p>
+
+            <div class="split">
+                <div>
+                    <h3>Who It’s For</h3>
+                    <ul>
+                        <li>Rice farmers and growers</li>
+                        <li>Agricultural researchers</li>
+                        <li>Academic institutions</li>
+                        <li>Precision agriculture initiatives</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3>Our Approach</h3>
+                    <ul>
+                        <li>Data-driven and research-oriented</li>
+                        <li>Designed for real-world agriculture</li>
+                        <li>Scalable and future-ready</li>
+                    </ul>
+                </div>
+            </div>
+
+            <a class="btn secondary" href="#top" aria-label="Back to top">Back to top</a>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div class="footer-bottom">
+            © 2026 OryzAID. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- ONE ENTRY SCRIPT -->
+    <script type="module" src="js/index/index.js"></script>
+</body>
+
+</html>

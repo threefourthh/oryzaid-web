@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Force blank favicon to clear cached tab icons -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>" />
+  
+  <title>OryzAID | Monitor</title>
+
+  <!-- Fonts: Outfit (Logo) and Inter (UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Global styles -->
+  <link rel="stylesheet" href="./css/base.css" />
+  <link rel="stylesheet" href="./css/monitor.css" />
+
+  <!-- Leaflet (for live map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+
+<body>
+
+  <!-- Local Monitor Header -->
+  <header class="mon-topbar">
+
+    <!-- OryzAID Text Logo -->
+    <a class="brand" href="index.html" aria-label="Go to home">
+      <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
+    </a>
+
+    <div class="mission-display">
+      <span class="tag">PLAN</span>
+      <span id="missionTitleLabel">No mission selected</span>
+    </div>
+
+    <div class="mon-actions">
+      <button id="backPlannerBtn" class="btn-ghost">Planner</button>
+      <button id="backBtn" class="btn-primary">Back</button>
+    </div>
+
+  </header>
+
+  <main class="monitor-wrap">
+
+    <!-- Connection banner -->
+    <section class="monitor-strip">
+
+      <div class="strip-left">
+        <div class="status-pill">
+          <span id="statusLed" class="led"></span>
+          <span id="statusText">CONNECTING...</span>
+        </div>
+      </div>
+
+      <div class="strip-mid">
+        <div class="strip-meta">
+          <span class="label">Mission:</span> <span id="missionIdLabel">—</span>
+          <span class="sep">|</span>
+          <span class="label">Source:</span> <span id="sourceLabel">—</span>
+        </div>
+      </div>
+
+      <div class="strip-right">
+        <button id="retryBtn" class="btn-primary" type="button">Retry</button>
+      </div>
+
+    </section>
+
+    <section class="monitor-layout">
+
+      <!-- LEFT: Big Live Map -->
+      <div class="monitor-left">
+        <div class="monitor-card map-card">
+          <h3>Live Map</h3>
+          <div id="miniMap" class="mini-map big"></div>
+
+          <div class="kv map-info">
+            <span>Marker</span>
+            <span id="markerInfo">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: All status cards -->
+      <div class="monitor-right">
+
+        <div class="monitor-card">
+          <h3>Mission Progress</h3>
+          <div class="kv"><span>Current waypoint</span><span id="wpVal">—</span></div>
+          <div class="kv"><span>Progress</span><span id="progressPctVal">—</span></div>
+
+          <div class="progress-wrap" aria-label="Mission progress">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </div>
+
+        <div class="monitor-card">
+          <h3>Drone</h3>
+          <div class="kv"><span>Armed</span><span id="armedVal">—</span></div>
+          <div class="kv"><span>Mode</span><span id="modeVal">—</span></div>
+        </div>
+
+        <div class="monitor-card">
+          <h3>Battery</h3>
+          <div class="kv"><span>Voltage</span><span id="voltVal">—</span></div>
+          <div class="kv"><span>Estimated %</span><span id="batPctVal">—</span></div>
+        </div>
+
+        <div class="monitor-card">
+          <h3>Link</h3>
+          <div class="kv"><span>Telemetry</span><span id="linkVal">—</span></div>
+          <div class="kv"><span>Last update</span><span id="lastUpdateVal">—</span></div>
+        </div>
+
+        <div class="monitor-card">
+          <h3>GPS</h3>
+          <div class="kv"><span>Lat</span><span id="latVal">—</span></div>
+          <div class="kv"><span>Lng</span><span id="lngVal">—</span></div>
+          <div class="kv"><span>Alt</span><span id="altVal">—</span></div>
+        </div>
+
+        <div class="monitor-card">
+          <h3>Pipeline</h3>
+          <div class="kv"><span>Capture</span><span id="camVal">—</span></div>
+          <div class="kv"><span>Inference</span><span id="inferVal">—</span></div>
+        </div>
+
+        <div class="monitor-card">
+          <h3>Cloud</h3>
+          <div class="kv"><span>Upload queue</span><span id="queueVal">—</span></div>
+          <div class="kv"><span>Uploaded</span><span id="uploadedVal">—</span></div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Leaflet -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Monitor logic -->
+  <script type="module" src="./js/monitor/monitor.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,145 @@
+/* =========================
+   NAVBAR (Shared)
+========================= */
+
+#navbar {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  transition: top 0.25s ease;
+}
+
+/* Fix pack: keep centered + responsive width */
+#navbar {
+  top: 18px;
+}
+
+.nav-inner {
+  background: rgba(107, 143, 104, 0.92);
+  backdrop-filter: blur(10px);
+  padding: 14px 18px;
+  border-radius: 12px;
+
+  /* original + fix pack combined */
+  width: min(1100px, calc(100vw - 24px));
+  max-width: none;
+  margin: 0 auto;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  box-shadow: var(--shadow-md);
+  border: var(--border);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fdd22b;
+  font-size: clamp(17px, 1.75vw, 29px);
+  text-decoration: none;
+}
+
+.logo span {
+  font-family: "Nunito", sans-serif;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.logo img {
+  height: 42px;
+  width: auto;
+  object-fit: contain;
+}
+
+#logo {
+  height: 7.5vh;
+  width: auto;
+}
+
+/* LINKS */
+.nav-inner ul {
+  list-style: none;
+  display: flex;
+  gap: clamp(18px, 4vw, 52px);
+  padding-right: 24px;
+  align-items: center;
+}
+
+.nav-link {
+  color: white;
+  font-size: clamp(18px, 1.3vw, 24px);
+  text-decoration: none;
+  font-weight: 600;
+  position: relative;
+  padding: 6px 0;
+  transition: opacity 0.15s ease;
+}
+
+.nav-link:hover { opacity: 0.9; }
+
+/* ACTIVE UNDERLINE */
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 2px;
+  background: white;
+  opacity: 0.9;
+}
+
+#navbar.stuck { top: 14px; }
+
+/* Menu button */
+.nav-toggle {
+  display: none;
+  border: none;
+  background: transparent;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+/* =========================
+   MOBILE NAV
+========================= */
+@media (max-width: 600px) {
+
+  #navbar {
+    top: 0;
+    left: 0;
+    transform: none;
+    width: 100%;
+  }
+
+  .nav-inner {
+    border-radius: 0;
+    width: 100%;
+    max-width: 100%;
+    padding: 12px 14px;
+    box-shadow: none;
+    backdrop-filter: blur(12px);
+  }
+
+  /* hide links by default */
+  .nav-inner ul { display: none; }
+
+  .logo { gap: 10px; font-size: 24px; }
+
+  /* show menu button on mobile */
+  .nav-toggle { display: block; }
+
+  /* show links when toggled */
+  #nav-links.open {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+  }
+}

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Force blank favicon to clear cached tab icons -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>" />
+  
+  <title>OryzAID | Mission Planning</title>
+  <meta name="description" content="OryzAID mission planning dashboard for drawing areas and generating flight paths." />
+
+  <!-- Fonts: Outfit (Logo) and Inter (UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+  <!-- Geoman CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css">
+
+  <!-- Page CSS -->
+  <link rel="stylesheet" href="css/drawmap.css" />
+</head>
+
+<body>
+  <!-- Center Notification -->
+  <div id="centerNotif" class="center-notif">
+    <div class="center-notif-box">
+      <span id="centerNotifText">Message here</span>
+      <button id="centerNotifOk">OK</button>
+    </div>
+  </div>
+
+  <!-- TOP BAR -->
+  <header class="me-topbar">
+    
+    <!-- OryzAID Text Logo -->
+    <div class="brand" aria-label="OryzAID">
+      <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
+    </div>
+
+    <div class="me-actions">
+
+      <div class="mission-display">
+        <span class="tag">PLAN</span>
+        <span id="planLabel">Creating plan...</span>
+      </div>
+
+      <button id="backBtn" class="me-btn me-btn-ghost" type="button">Back</button>
+
+    </div>
+  </header>
+
+  <!-- MAP -->
+  <main>
+    <!-- Wrapper that clips nicely without breaking Leaflet controls -->
+    <div class="map-shell">
+      <div id="map" role="application" aria-label="OryzAID Map"></div>
+
+      <!-- Small overlay info -->
+      <div id="areaDisplay" aria-live="polite">Area: 0 ha</div>
+
+      <!-- Optional hints -->
+      <div id="hintDisplay" class="hint-display" aria-live="polite">
+        Draw the field boundary using the map tools.
+      </div>
+    </div>
+  </main>
+
+  <!-- MISSION BAR -->
+  <div class="missionbar" aria-label="Mission planning actions">
+    <div class="mission status" id="plannerStatus" aria-live="polite">
+      <span class="label">STATUS</span>
+      <span class="value" data-state="planning">PLANNING</span>
+    </div>
+
+    <button type="button" class="mission action" id="generatePathBtn" disabled>
+      <span>GENERATE PATH</span>
+    </button>
+
+    <button type="button" class="mission action" id="exportBtn" disabled>
+      <span>EXPORT .WAYPOINTS</span>
+    </button>
+
+    <button type="button" class="mission action" id="monitorBtn" disabled>
+      <span>GO TO MONITOR</span>
+    </button>
+
+    <!-- Mission Summary -->
+    <div id="missionSummary" class="summary">
+      <div><b>Distance:</b> <span id="sumDistance">—</span></div>
+      <div><b>Time:</b> <span id="sumTime">—</span></div>
+      <div><b>Battery:</b> <span id="sumBattery">—</span></div>
+    </div>
+  </div>
+
+  <!-- Scripts (ORDER MATTERS) -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.min.js"></script>
+  <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+  <script src="https://unpkg.com/proj4@2.9.2/dist/proj4.js"></script>
+
+  <script type="module" src="js/drawmap/app.js"></script>
+</body>
+
+</html>

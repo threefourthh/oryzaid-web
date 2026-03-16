@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  
+  <!-- Force a blank favicon to override and remove the old cached logo from the tab -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>">
+  
+  <title>OryzAID | Missions Dashboard</title>
+
+  <!-- Google Fonts: Outfit (Logo) and Inter (UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Shared CSS -->
+  <link rel="stylesheet" href="css/base.css" />
+
+  <!-- Page CSS -->
+  <link rel="stylesheet" href="css/missions.css" />
+</head>
+<body>
+
+  <!-- TOP HEADER -->
+  <header class="hub-top">
+    <!-- Replaced Logo Image with the new Outfit Text Gradient -->
+    <a class="brand" href="index.html" aria-label="Go to home">
+      <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
+    </a>
+
+    <div class="actions">
+      <button id="newPlanBtn" type="button">+ New Mission</button>
+      <a class="back" href="index.html">Back</a>
+    </div>
+  </header>
+
+  <!-- GRID CONTENT -->
+  <main class="hub" role="main">
+
+    <!-- LOCAL PLANS -->
+    <section class="card" aria-labelledby="localTitle">
+      <div class="card-head">
+        <h2 id="localTitle">📝 Mission Plans (Local)</h2>
+        <small class="hint">Draft flight plans saved in this browser</small>
+      </div>
+
+      <!-- JS will render cards/items here -->
+      <div id="localList" class="list" aria-live="polite">Loading…</div>
+    </section>
+
+    <!-- CLOUD MISSIONS -->
+    <section class="card" aria-labelledby="cloudTitle">
+      <div class="card-head">
+        <h2 id="cloudTitle">☁️ Past Missions (Cloud Results)</h2>
+        <small class="hint">Uploaded missions and drone data available on the server</small>
+      </div>
+
+      <!-- JS will render cards/items here -->
+      <div id="cloudList" class="list" aria-live="polite">Loading…</div>
+    </section>
+
+  </main>
+
+  <script type="module" src="js/missions/missions.js"></script>
+</body>
+</html>
