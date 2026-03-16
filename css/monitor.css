@@ -1,21 +1,21 @@
 /* css/monitor.css
-   OryzAID Monitor (clean + no duplicates)
-   - Local green topbar
-   - Compact status strip (no black banner)
+   OryzAID Monitor 
+   - Local white topbar with purple gradient logo
+   - Compact status strip
    - Big Live Map LEFT, cards RIGHT
 */
 
 :root{
-  --mz-green: #6f8f63;
-  --mz-accent: #F6CF3A;
-  --mz-bg: #f4f7f3;
-  --mz-text: #0b1220;
-  --mz-muted: #6b7a72;
+  --mz-purple: #9c0096;
+  --mz-accent: #d900c5;
+  --mz-bg: #f9fafb;
+  --mz-text: #111827;
+  --mz-muted: #6b7280;
 
   --radius-lg: 18px;
   --radius-md: 12px;
 
-  --shadow-sm: 0 8px 18px rgba(0,0,0,0.10);
+  --shadow-sm: 0 4px 20px rgba(0,0,0,0.05);
   --shadow-md: 0 12px 28px rgba(0,0,0,0.16);
 }
 
@@ -24,7 +24,7 @@ body{
   margin:0;
   background: var(--mz-bg);
   color: var(--mz-text);
-  font-family: Poppins, Arial, sans-serif;
+  font-family: "Inter", "Poppins", Arial, sans-serif;
 }
 
 /* =========================
@@ -35,25 +35,36 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:14px;
-  padding:14px 18px;
-  background: var(--mz-green);
-  color:#fff;
+  padding:14px 20px;
+  background: #ffffff;
+  color: var(--mz-text);
   box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .mon-brand{
   display:flex;
   align-items:center;
-  gap:12px;
-  font-weight:900;
-  font-size:20px;
+  text-decoration:none;
   white-space:nowrap;
 }
 
-.mon-brand img{
-  height:34px;
-  width:auto;
-  display:block;
+/* Perfect Match to Index Logo */
+.logo-text {
+  font-family: "Outfit", sans-serif;
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--mz-purple);
+  letter-spacing: -0.5px;
+}
+
+.aid-gradient {
+  font-family: "Outfit", sans-serif;
+  font-weight: 900;
+  background: linear-gradient(to right, #d900c5 0%, #8b5cf6 50%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .mon-center{
@@ -63,7 +74,6 @@ body{
   min-width: 220px;
 }
 
-/* Use this if you keep the "PLAN + mission" middle label (no dropdown) */
 .mission-display{
   width: min(680px, 100%);
   display:flex;
@@ -71,26 +81,26 @@ body{
   gap:10px;
 
   padding:10px 14px;
-  border-radius: 14px;
+  border-radius: 50px;
 
-  background: rgba(255,255,255,0.18);
-  border: 1px solid rgba(255,255,255,0.30);
-  backdrop-filter: blur(6px);
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
 
-  color:#fff;
-  font-weight: 900;
+  color: var(--mz-text);
+  font-weight: 700;
+  font-size: 14px;
   overflow:hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .mission-display .tag{
-  font-weight:900;
-  font-size:12px;
-  padding:4px 10px;
+  font-weight:800;
+  font-size:11px;
+  padding:4px 12px;
   border-radius:999px;
-  background: rgba(0,0,0,0.16);
-  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(156,0,150,0.1);
+  color: var(--mz-purple);
   flex:0 0 auto;
 }
 
@@ -103,34 +113,35 @@ body{
 }
 
 .btn-yellow{
-  background: var(--mz-accent);
-  color:#101010;
+  background: var(--mz-purple);
+  color: #ffffff;
   border:0;
-  padding:10px 16px;
-  border-radius: 12px;
-  font-weight:900;
+  padding:10px 20px;
+  border-radius: 50px;
+  font-weight:700;
   cursor:pointer;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 4px 12px rgba(156,0,150,0.15);
+  transition: transform 0.2s ease;
 }
-.btn-yellow:hover{ filter: brightness(0.98); }
+.btn-yellow:hover{ transform: translateY(-1px); background: #7a0076; }
 
 .btn-ghost-light{
-  background: rgba(255,255,255,0.16);
-  color:#fff;
-  border: 1px solid rgba(255,255,255,0.28);
-  padding:10px 14px;
-  border-radius: 12px;
-  font-weight:900;
+  background: #ffffff;
+  color: var(--mz-text);
+  border: 1px solid #e5e7eb;
+  padding:10px 20px;
+  border-radius: 50px;
+  font-weight:700;
   cursor:pointer;
+  transition: background 0.2s ease;
 }
-.btn-ghost-light:hover{ background: rgba(255,255,255,0.22); }
+.btn-ghost-light:hover{ background: #f3f4f6; }
 
 /* =========================
    Content
 ========================= */
 .monitor-wrap{
-  /* bigger overall */
-  max-width: 1320px;   /* was 1150 */
+  max-width: 1320px; 
   margin: 0 auto;
   padding: 18px;
 }
@@ -142,8 +153,8 @@ body{
   margin: 16px 0 18px;
   padding: 12px 14px;
   border-radius: var(--radius-lg);
-  background: rgba(255,255,255,0.92);
-  border: 1px solid rgba(0,0,0,0.06);
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   box-shadow: var(--shadow-sm);
 
   display:flex;
@@ -166,53 +177,50 @@ body{
 
 .strip-meta{
   font-size: 13px;
-  font-weight: 900;
+  font-weight: 700;
   color: var(--mz-text);
-  opacity: 0.95;
   text-align:center;
-  line-height: 1.2;
 }
 
 .strip-meta .label{
   color: var(--mz-muted);
-  font-weight: 900;
+  font-weight: 600;
 }
 
 .strip-meta .sep{
   margin: 0 8px;
-  opacity: 0.55;
+  opacity: 0.3;
 }
 
-/* Status pill (ONLY ONCE, no duplicates) */
+/* Status pill */
 .status-pill{
   display:inline-flex;
   align-items:center;
   gap:10px;
-  padding: 8px 12px;
+  padding: 8px 14px;
   border-radius: 999px;
-  font-weight: 900;
+  font-weight: 800;
   font-size: 12px;
 
-  background: rgba(111,143,99,0.12); /* soft green */
-  border: 1px solid rgba(111,143,99,0.25);
-  color: var(--mz-text);
+  background: rgba(14, 165, 233, 0.1);
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  color: #0284c7;
 }
 
 .status-pill .led{
   width:10px;
   height:10px;
   border-radius:999px;
-  background:#999;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
+  background: #0ea5e9;
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15);
 }
 
 /* =========================
    Dashboard Layout
-   Big map LEFT, cards RIGHT
 ========================= */
 .monitor-layout{
   display:grid;
-  grid-template-columns: 1.75fr 1fr;  /* left bigger */
+  grid-template-columns: 1.75fr 1fr;
   gap: 16px;
   align-items:start;
 }
@@ -227,17 +235,18 @@ body{
 
 /* Cards */
 .monitor-card{
-  background: rgba(255,255,255,0.92);
+  background: #ffffff;
   border-radius: var(--radius-lg);
-  padding: 16px; /* slightly bigger */
+  padding: 16px;
   box-shadow: var(--shadow-sm);
-  border: 1px solid rgba(0,0,0,0.06);
+  border: 1px solid #e5e7eb;
 }
 
 .monitor-card h3{
   margin: 0 0 10px;
   font-size: 14px;
-  font-weight: 900;
+  font-weight: 800;
+  color: var(--mz-purple);
 }
 
 /* Key-value rows */
@@ -252,17 +261,17 @@ body{
 
 .kv span:first-child{
   color: var(--mz-muted);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 .kv span:last-child{
-  font-weight: 900;
+  font-weight: 700;
   color: var(--mz-text);
 }
 
 /* Big map card */
 .map-card{
-  height: calc(100vh - 220px); /* taller map */
+  height: calc(100vh - 220px);
   min-height: 620px;
   display:flex;
   flex-direction: column;
@@ -271,10 +280,9 @@ body{
 .mini-map{
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid rgba(0,0,0,0.08);
+  border: 1px solid #e5e7eb;
 }
 
-/* Big map takes most of card */
 .mini-map.big{
   flex:1;
   height:auto;
@@ -287,7 +295,7 @@ body{
 @media (min-width: 1100px){
   .map-card{
     position: sticky;
-    top: 110px; /* under green topbar */
+    top: 110px;
   }
 }
 
@@ -298,33 +306,17 @@ body{
   .mon-topbar{ flex-wrap: wrap; }
   .mon-center{ order: 3; width: 100%; }
   .mission-display{ width: 100%; }
-
-  .monitor-layout{
-    grid-template-columns: 1fr;
-  }
-
-  .map-card{
-    position: static;
-    height: auto;
-    min-height: auto;
-  }
-
-  .mini-map.big{
-    min-height: 340px;
-  }
+  .monitor-layout{ grid-template-columns: 1fr; }
+  .map-card{ position: static; height: auto; min-height: auto; }
+  .mini-map.big{ min-height: 340px; }
 }
 
 @media (max-width: 900px){
-  .monitor-strip{
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-  }
+  .monitor-strip{ flex-direction: column; align-items: stretch; gap: 10px; }
   .strip-mid{ justify-content:flex-start; }
   .strip-right{ justify-content:flex-end; }
   .strip-meta{ text-align:left; }
 }
-
 
 #statusLed {
   transition: background 0.2s ease;
@@ -337,11 +329,9 @@ body{
   overflow: hidden;
 }
 
-
 /* =========================
    Drone Marker (Live position)
 ========================= */
-
 .maizeeye-drone-icon {
   display:flex;
   align-items:center;
@@ -352,54 +342,40 @@ body{
   width:18px;
   height:18px;
   border-radius:50%;
-  background:#22c55e;
+  background: var(--mz-purple);
   border:3px solid #ffffff;
   box-shadow:
     0 0 0 2px rgba(0,0,0,0.25),
-    0 0 10px rgba(34,197,94,0.45);
+    0 0 10px rgba(156,0,150,0.45);
 }
 
 /* =========================
    Leaflet Map Tweaks
 ========================= */
-
 .leaflet-container {
-  background:#e5e7eb;
-  font-family:Poppins, Arial, sans-serif;
+  background:#f3f4f6;
+  font-family:"Inter", sans-serif;
 }
-
-/* Keep boundary/path visible above heatmap */
 
 .leaflet-overlay-pane path {
   pointer-events:auto;
 }
 
-/* Smooth map marker movement */
-
 .leaflet-marker-icon {
   transition: transform 0.25s linear;
 }
-
-/* =========================
-   Mission geometry styles
-========================= */
 
 .leaflet-interactive {
   cursor:pointer;
 }
 
-/* Flight path style enhancement */
-
 .leaflet-overlay-pane polyline {
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.45));
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.3));
 }
-
-/* Boundary highlight */
 
 .leaflet-overlay-pane polygon {
-  filter: drop-shadow(0 0 4px rgba(246,207,58,0.4));
+  filter: drop-shadow(0 0 4px rgba(14,165,233,0.3));
 }
-
 
 /* =========================
    Mission Progress
@@ -409,7 +385,8 @@ body{
   width: 100%;
   height: 12px;
   border-radius: 999px;
-  background: rgba(0,0,0,0.08);
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
   overflow: hidden;
 }
 
@@ -417,14 +394,13 @@ body{
   height: 100%;
   width: 0%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #F6CF3A 0%, #22c55e 100%);
+  background: linear-gradient(to right, #d900c5 0%, #8b5cf6 50%, #0ea5e9 100%);
   transition: width 0.25s ease;
 }
 
 /* ===============================
    Map Legend
 =============================== */
-
 .map-wrapper {
   position: relative;
 }
@@ -435,18 +411,20 @@ body{
   left: 14px;
   z-index: 500;
 
-  background: rgba(15, 20, 18, 0.88);
-  backdrop-filter: blur(4px);
-  padding: 10px 12px;
-  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(8px);
+  padding: 12px 14px;
+  border-radius: 14px;
   font-size: 12px;
-  color: #ffffff;
+  color: var(--mz-text);
+  border: 1px solid #e5e7eb;
 
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--shadow-sm);
+  font-weight: 500;
 }
 
 .legend-item {
@@ -462,13 +440,15 @@ body{
 }
 
 .legend-dot.drone {
-  background: #22c55e;
+  background: var(--mz-purple);
   border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
 }
 
 .legend-dot.field {
-  background: #F6CF3A;
-  border: 2px solid #17210f;
+  background: var(--mz-accent);
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
 }
 
 .legend-line {
@@ -477,11 +457,12 @@ body{
 }
 
 .legend-line.trail {
-  background: #22c55e;
+  background: var(--mz-purple);
 }
 
 .legend-line.flight {
-  border-top: 3px dashed #ffffff;
+  border-top: 3px dashed var(--mz-text);
+  opacity: 0.5;
 }
 
 .legend-box {
@@ -490,6 +471,6 @@ body{
 }
 
 .legend-box.boundary {
-  background: rgba(246, 207, 58, 0.35);
-  border: 2px solid #F6CF3A;
+  background: rgba(14,165,233,0.15);
+  border: 2px solid #0ea5e9;
 }

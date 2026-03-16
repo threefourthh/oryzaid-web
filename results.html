@@ -10,7 +10,7 @@
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -23,8 +23,7 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <div class="brand">
-      <img src="assets/logo/OryzAID_logo.png" alt="OryzAID logo" onerror="this.src='assets/icons/drone.png'">
-      <span>OryzAID</span>
+      <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
     </div>
 
     <div class="mission-bar" aria-label="Mission controls">
@@ -46,7 +45,6 @@
         <div class="layer-status-bar" id="layerStatusBar" aria-label="Active heatmap layers">
           <span class="layer-chip disease on" id="chipDisease">Diseases: ON</span>
           <span class="layer-chip pest on" id="chipPest">Pests: ON</span>
-          <span class="layer-chip npk on" id="chipNpk">NPK: ON</span>
         </div>
 
         <div id="map" role="application" aria-label="OryzAID results map"></div>
@@ -95,7 +93,7 @@
           </div>
         </section>
 
-        <!-- DISEASES -->
+        <!-- DISEASES (Updated to Rice Diseases) -->
         <section class="resultbox" id="disresult">
           <div class="top">
             <span>DISEASES</span>
@@ -135,7 +133,7 @@
           </div>
         </section>
 
-        <!-- PESTS -->
+        <!-- PESTS (Updated to Rice Pests) -->
         <section class="resultbox" id="pestresult">
           <div class="top">
             <span>PESTS</span>
@@ -148,38 +146,6 @@
             </button>
             <span class="result-label">Rice Hispa</span>
             <span id="grasshopper">00%</span>
-          </div>
-        </section>
-
-        <!-- NPK -->
-        <section class="resultbox" id="npkresult">
-          <div class="top">
-            <span>NPK DEFICIENCY</span>
-            <img src="assets/icons/nutrients.png" alt="NPK deficiency">
-          </div>
-
-          <div class="rnow">
-            <button type="button" class="seebutton" id="Nsee" title="Toggle NPK heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
-            </button>
-            <span class="result-label">Nitrogen Def.</span>
-            <span id="nitrogen">00%</span>
-          </div>
-
-          <div class="rnow">
-            <button type="button" class="seebutton" id="Psee" title="Toggle NPK heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
-            </button>
-            <span class="result-label">Phosphorus Def.</span>
-            <span id="phosphorus">00%</span>
-          </div>
-
-          <div class="rnow">
-            <button type="button" class="seebutton" id="Ksee" title="Toggle NPK heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
-            </button>
-            <span class="result-label">Potassium Def.</span>
-            <span id="potassium">00%</span>
           </div>
         </section>
 
