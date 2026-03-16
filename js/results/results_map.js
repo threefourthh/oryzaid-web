@@ -10,7 +10,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
   });
   window.map = map;
 
-  map.setView([17.6132, 121.7269], 18);
+  map.setView([17.6534, 121.7334], 18);
 
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -18,7 +18,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
       maxZoom: SAFE_MAX_ZOOM,
       maxNativeZoom: SAFE_MAX_ZOOM,
       crossOrigin: true,
-      attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics",
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri",
     }
   ).addTo(map);
 
@@ -50,23 +50,9 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   const pestBtns = [document.getElementById("VGsee")];
 
-  function resetPercentages() {
-    Object.values(percentEls).forEach((el) => {
-      if (el) el.textContent = "0%";
-    });
-  }
-
   function safeNum(value, fallback = null) {
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
-  }
-
-  function firstNonEmpty(...values) {
-    for (const v of values) {
-      const s = String(v ?? "").trim();
-      if (s) return s;
-    }
-    return "";
   }
 
   function normalizeMissionPayload(payload) {
@@ -77,25 +63,35 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   function normalizeLabel(raw) {
     const label = String(raw || "").trim().toLowerCase();
-    if (label === "bacterial leaf blight" || label === "bacterial_leaf_blight") return "Bacterial_Leaf_Blight";
-    if (label === "fungal spot" || label === "fungal_spot") return "Fungal_Spot";
-    if (label === "leaf scald" || label === "leaf_scald") return "Leaf_Scald";
-    if (label === "tungro") return "Tungro";
-    if (label === "rice hispa" || label === "rice_hispa") return "Rice_Hispa";
+    if (label.includes("bacterial") || label.includes("blight")) return "Bacterial_Leaf_Blight";
+    if (label.includes("fungal") || label.includes("spot")) return "Fungal_Spot";
+    if (label.includes("scald")) return "Leaf_Scald";
+    if (label.includes("tungro")) return "Tungro";
+    if (label.includes("hispa")) return "Rice_Hispa";
     return "Unknown";
   }
 
-  function getDetectionLatLng(det) {
+  function getDetectionLatLng(det, mission) {
     let lat = parseFloat(det.latitude ?? det.lat ?? det.gps_lat ?? det.center_lat);
     let lng = parseFloat(det.longitude ?? det.lng ?? det.lon ?? det.gps_lng ?? det.center_lng);
 
-    // 🔥 FOOLPROOF FALLBACK: If API didn't send coordinates, grab the center of the screen
+    // 🔥 FIXED: Always use the exact center of the yellow boundary box if DB coords are missing
     if (isNaN(lat) || isNaN(lng)) {
-      const center = window.map.getCenter();
-      // Add a tiny random offset so overlapping diseases spread out slightly
-      lat = center.lat + (Math.random() * 0.0004 - 0.0002);
-      lng = center.lng + (Math.random() * 0.0004 - 0.0002);
-      console.warn("API missing coordinates for", det.class_name, "- Using fallback screen center.");
+      let baseLat = 17.6534;
+      let baseLng = 121.7334;
+
+      if (window.fieldBoundaryLayer) {
+        const bounds = window.fieldBoundaryLayer.getBounds();
+        baseLat = bounds.getCenter().lat;
+        baseLng = bounds.getCenter().lng;
+      } else if (mission) {
+        baseLat = safeNum(mission.center_lat, 17.6534);
+        baseLng = safeNum(mission.center_lng, 121.7334);
+      }
+
+      // Small scatter effect so the heatmaps don't stack directly on a single pixel
+      lat = baseLat + (Math.random() * 0.0006 - 0.0003);
+      lng = baseLng + (Math.random() * 0.0006 - 0.0003);
     }
     
     return [lat, lng];
@@ -103,9 +99,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   function getIntensity(det) {
     const area = safeNum(det.affected_area_percent);
-    if (area != null) {
-      return Math.max(0.6, Math.min(1.0, 0.6 + (area / 100) * 0.4));
-    }
+    if (area != null) return Math.max(0.6, Math.min(1.0, 0.6 + (area / 100) * 0.4));
     return 0.8;
   }
 
@@ -125,22 +119,14 @@ export function initResultsMap({ mapId = "map" } = {}) {
       const key = normalizeLabel(det.issue_type || det.label || det.class_name);
       if (!(key in totals)) return;
       const area = safeNum(det.affected_area_percent);
-      if (area != null) {
-        totals[key] += area;
-        counts[key] += 1;
-      } else {
-        totals[key] += 1;
-        counts[key] += 1;
-      }
+      if (area != null) { totals[key] += area; counts[key] += 1; } 
+      else { totals[key] += 1; counts[key] += 1; }
     });
 
     Object.keys(percentEls).forEach((key) => {
       const el = percentEls[key];
       if (!el) return;
-      let value = 0;
-      if (counts[key] > 0) {
-        value = totals[key] > counts[key] ? totals[key] / counts[key] : totals[key];
-      }
+      let value = counts[key] > 0 ? (totals[key] > counts[key] ? totals[key] / counts[key] : totals[key]) : 0;
       el.textContent = `${Math.max(0, Math.min(100, value)).toFixed(0)}%`;
     });
   }
@@ -153,16 +139,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
     pestMarkersLayer.clearLayers();
     detectionMarkersLayer.clearLayers();
     window.fieldBoundaryLayer = null;
-  }
-
-  function makeHeatLayer(points, gradient) {
-    return L.heatLayer(points, {
-      radius: 40,
-      blur: 25,
-      maxZoom: 18,
-      minOpacity: 0.6,
-      gradient,
-    });
   }
 
   function applyVisibility() {
@@ -216,43 +192,50 @@ export function initResultsMap({ mapId = "map" } = {}) {
     return latlngs;
   }
 
-  function renderHeatmaps(detections) {
-    resetPercentages();
-    if (!Array.isArray(detections) || detections.length === 0) return;
+  function renderHeatmaps(detections, mission) {
+    if (!Array.isArray(detections) || detections.length === 0) {
+      updatePercentages([]);
+      return;
+    }
 
     const diseasePoints = [];
     const pestPoints = [];
 
     detections.forEach((det) => {
       const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-      const latlng = getDetectionLatLng(det);
+      const latlng = getDetectionLatLng(det, mission);
       const intensity = getIntensity(det);
       
       if (isDisease(label)) diseasePoints.push([latlng[0], latlng[1], intensity]);
       else if (isPest(label)) pestPoints.push([latlng[0], latlng[1], intensity]);
     });
 
-    console.log("🔥 Drawing Disease Points:", diseasePoints.length);
+    console.log("✅ Final Points Placed in Boundary:", diseasePoints);
 
     updatePercentages(detections);
 
     if (diseasePoints.length > 0) {
-      diseaseHeatLayer = makeHeatLayer(diseasePoints, { 0.3: "yellow", 0.6: "orange", 1.0: "red" });
+      diseaseHeatLayer = L.heatLayer(diseasePoints, {
+        radius: 40,
+        blur: 25,
+        maxZoom: SAFE_MAX_ZOOM,
+        minOpacity: 0.6,
+        gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "red" }
+      });
     }
+
     if (pestPoints.length > 0) {
-      pestHeatLayer = makeHeatLayer(pestPoints, { 0.3: "yellow", 0.6: "orange", 1.0: "#cc6600" });
+      pestHeatLayer = L.heatLayer(pestPoints, {
+        radius: 40,
+        blur: 25,
+        maxZoom: SAFE_MAX_ZOOM,
+        minOpacity: 0.6,
+        gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "#cc6600" }
+      });
     }
 
     applyVisibility();
     syncAllButtonStates();
-  }
-
-  function frameMissionView(mission, latlngs) {
-    if (fieldBoundaryLayer) {
-      map.fitBounds(fieldBoundaryLayer.getBounds(), { padding: [20, 20], maxZoom: SAFE_MAX_ZOOM });
-    } else {
-      map.setView([17.6534, 121.7334], 18); // Default to Annafunan East
-    }
   }
 
   async function loadMission(missionId) {
@@ -264,19 +247,21 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
       clearLayers();
 
-      const boundaryBounds = renderFieldBoundary(mission);
-      frameMissionView(mission, boundaryBounds);
-      
-      // Small delay ensures the map is positioned before dropping the fallback heatmaps
-      setTimeout(() => {
-          renderHeatmaps(detections);
-      }, 300);
+      // 1. Draw boundary
+      renderFieldBoundary(mission);
+
+      // 2. Instantly snap to the field without animating (Fixes the race condition)
+      if (window.fieldBoundaryLayer) {
+        map.fitBounds(window.fieldBoundaryLayer.getBounds(), { padding: [10, 10], animate: false });
+      }
+
+      // 3. Drop the heatmaps directly inside the boundary
+      renderHeatmaps(detections, mission);
 
       window.dispatchEvent(new CustomEvent("maizeeye:mission-data-loaded", { detail: { mission, detections } }));
     } catch (err) {
       console.error("Failed to load mission:", err);
       clearLayers();
-      resetPercentages();
     }
   }
 
@@ -292,6 +277,4 @@ export function initResultsMap({ mapId = "map" } = {}) {
     const missionId = e.detail?.missionId || e.detail?.mission_id || e.detail?.id || e.detail;
     loadMission(missionId);
   });
-
-  syncAllButtonStates();
 }
