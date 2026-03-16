@@ -1,165 +1,136 @@
-/* =========================
-   ORYZAID MONITOR DASHBOARD
-========================= */
+/* css/monitor.css
+   OryzAID Monitor (clean + no duplicates)
+   - Local green topbar
+   - Compact status strip (no black banner)
+   - Big Live Map LEFT, cards RIGHT
+*/
 
-:root {
-  --primary-purple: #9c0096;
-  --primary-light: #d94fd3;
-  --primary-cyan: #0ea5e9;
-
-  --bg: #f9fafb;
-  --surface: #ffffff;
-  --border: #e5e7eb;
-
-  --text: #111827;
-  --muted: #6b7280;
-
-  --danger: #ef4444;
-  --success: #10b981;
+:root{
+  --mz-green: #6f8f63;
+  --mz-accent: #F6CF3A;
+  --mz-bg: #f4f7f3;
+  --mz-text: #0b1220;
+  --mz-muted: #6b7a72;
 
   --radius-lg: 18px;
   --radius-md: 12px;
 
-  --shadow-sm: 0 4px 10px rgba(0,0,0,0.05);
-  --shadow-md: 0 10px 25px rgba(0,0,0,0.08);
+  --shadow-sm: 0 8px 18px rgba(0,0,0,0.10);
+  --shadow-md: 0 12px 28px rgba(0,0,0,0.16);
 }
 
 /* Page */
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: "Inter", "Poppins", sans-serif;
+body{
+  margin:0;
+  background: var(--mz-bg);
+  color: var(--mz-text);
+  font-family: Poppins, Arial, sans-serif;
 }
 
 /* =========================
-   BRANDING
+   Local Monitor Topbar
 ========================= */
-.brand {
-  text-decoration: none;
-  display: flex;
-  align-items: center;
+.mon-topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px 18px;
+  background: var(--mz-green);
+  color:#fff;
+  box-shadow: var(--shadow-sm);
 }
 
-.logo-text,
-.aid-gradient {
-  font-family: "Outfit", sans-serif !important;
-  font-weight: 900 !important;
+.mon-brand{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-weight:900;
+  font-size:20px;
+  white-space:nowrap;
 }
 
-.logo-text {
-  font-size: clamp(22px, 2.5vw, 26px) !important;
-  color: var(--text) !important; 
-  letter-spacing: -0.5px !important;
+.mon-brand img{
+  height:34px;
+  width:auto;
+  display:block;
 }
 
-.aid-gradient {
-  background: linear-gradient(to right, #d900c5 0%, #8b5cf6 50%, #0ea5e9 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-  -webkit-font-smoothing: antialiased !important;
-}
-
-/* =========================
-   Monitor Topbar
-========================= */
-.mon-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 24px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-}
-
-.mon-center {
-  flex: 1;
-  display: flex;
-  justify-content: center;
+.mon-center{
+  flex:1;
+  display:flex;
+  justify-content:center;
   min-width: 220px;
 }
 
-/* Mission Display (Top middle) */
-.mission-display {
+/* Use this if you keep the "PLAN + mission" middle label (no dropdown) */
+.mission-display{
   width: min(680px, 100%);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px;
-  border-radius: 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-weight: 700;
-  font-size: 14px;
-  overflow: hidden;
+  display:flex;
+  align-items:center;
+  gap:10px;
+
+  padding:10px 14px;
+  border-radius: 14px;
+
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.30);
+  backdrop-filter: blur(6px);
+
+  color:#fff;
+  font-weight: 900;
+  overflow:hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.mission-display .tag {
-  font-weight: 800;
-  font-size: 11px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: rgba(156, 0, 150, 0.1);
-  color: var(--primary-purple);
-  border: 1px solid rgba(156, 0, 150, 0.2);
-  flex: 0 0 auto;
+.mission-display .tag{
+  font-weight:900;
+  font-size:12px;
+  padding:4px 10px;
+  border-radius:999px;
+  background: rgba(0,0,0,0.16);
+  border: 1px solid rgba(255,255,255,0.18);
+  flex:0 0 auto;
 }
 
 /* Right actions */
-.mon-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  white-space: nowrap;
+.mon-actions{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  white-space:nowrap;
 }
 
-.btn-primary {
-  background: var(--primary-purple);
-  color: #fff;
-  border: 0;
-  padding: 10px 20px;
+.btn-yellow{
+  background: var(--mz-accent);
+  color:#101010;
+  border:0;
+  padding:10px 16px;
   border-radius: 12px;
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 10px rgba(156, 0, 150, 0.2);
+  font-weight:900;
+  cursor:pointer;
+  box-shadow: var(--shadow-sm);
 }
-.btn-primary:hover { 
-  background: #7a0076; 
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(156, 0, 150, 0.3);
-}
-.btn-primary:active { transform: scale(0.98); }
+.btn-yellow:hover{ filter: brightness(0.98); }
 
-.btn-ghost {
-  background: var(--surface);
-  color: var(--text);
-  border: 1px solid var(--border);
-  padding: 10px 20px;
+.btn-ghost-light{
+  background: rgba(255,255,255,0.16);
+  color:#fff;
+  border: 1px solid rgba(255,255,255,0.28);
+  padding:10px 14px;
   border-radius: 12px;
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  font-weight:900;
+  cursor:pointer;
 }
-.btn-ghost:hover { 
-  background: var(--bg); 
-  border-color: #d1d5db; 
-}
+.btn-ghost-light:hover{ background: rgba(255,255,255,0.22); }
 
 /* =========================
    Content
 ========================= */
-.monitor-wrap {
-  max-width: 1320px; 
+.monitor-wrap{
+  /* bigger overall */
+  max-width: 1320px;   /* was 1150 */
   margin: 0 auto;
   padding: 18px;
 }
@@ -167,153 +138,156 @@ body {
 /* =========================
    Compact Status Strip
 ========================= */
-.monitor-strip {
+.monitor-strip{
   margin: 16px 0 18px;
-  padding: 12px 16px;
+  padding: 12px 14px;
   border-radius: var(--radius-lg);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.06);
   box-shadow: var(--shadow-sm);
 
-  display: flex;
-  align-items: center;
+  display:flex;
+  align-items:center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.strip-left, .strip-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+.strip-left, .strip-right{
+  display:flex;
+  align-items:center;
+  gap:10px;
 }
 
-.strip-mid {
-  flex: 1;
-  display: flex;
-  justify-content: center;
+.strip-mid{
+  flex:1;
+  display:flex;
+  justify-content:center;
 }
 
-.strip-meta {
+.strip-meta{
   font-size: 13px;
-  font-weight: 800;
-  color: var(--text);
-  text-align: center;
+  font-weight: 900;
+  color: var(--mz-text);
+  opacity: 0.95;
+  text-align:center;
   line-height: 1.2;
 }
 
-.strip-meta .label {
-  color: var(--muted);
-  font-weight: 700;
+.strip-meta .label{
+  color: var(--mz-muted);
+  font-weight: 900;
 }
 
-.strip-meta .sep {
+.strip-meta .sep{
   margin: 0 8px;
-  color: var(--border);
+  opacity: 0.55;
 }
 
-/* Status pill */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 14px;
+/* Status pill (ONLY ONCE, no duplicates) */
+.status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:10px;
+  padding: 8px 12px;
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 900;
   font-size: 12px;
-  background: var(--bg); 
-  border: 1px solid var(--border);
-  color: var(--text);
+
+  background: rgba(111,143,99,0.12); /* soft green */
+  border: 1px solid rgba(111,143,99,0.25);
+  color: var(--mz-text);
 }
 
-.status-pill .led {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #9ca3af;
-  box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+.status-pill .led{
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:#999;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.06);
 }
 
 /* =========================
    Dashboard Layout
+   Big map LEFT, cards RIGHT
 ========================= */
-.monitor-layout {
-  display: grid;
-  grid-template-columns: 1.75fr 1fr;
+.monitor-layout{
+  display:grid;
+  grid-template-columns: 1.75fr 1fr;  /* left bigger */
   gap: 16px;
-  align-items: start;
+  align-items:start;
 }
 
-.monitor-left { min-width: 0; }
+.monitor-left{ min-width:0; }
 
-.monitor-right {
-  display: flex;
+.monitor-right{
+  display:flex;
   flex-direction: column;
   gap: 14px;
 }
 
 /* Cards */
-.monitor-card {
-  background: var(--surface);
+.monitor-card{
+  background: rgba(255,255,255,0.92);
   border-radius: var(--radius-lg);
-  padding: 20px; 
+  padding: 16px; /* slightly bigger */
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,0,0,0.06);
 }
 
-.monitor-card h3 {
-  margin: 0 0 14px;
-  font-size: 15px;
-  font-weight: 800;
-  color: var(--text);
+.monitor-card h3{
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 900;
 }
 
 /* Key-value rows */
-.kv {
-  display: flex;
+.kv{
+  display:flex;
   justify-content: space-between;
-  align-items: center;
+  align-items:center;
   gap: 12px;
-  margin: 10px 0;
+  margin: 8px 0;
   font-size: 13px;
 }
 
-.kv span:first-child {
-  color: var(--muted);
-  font-weight: 700;
+.kv span:first-child{
+  color: var(--mz-muted);
+  font-weight: 800;
 }
 
-.kv span:last-child {
-  font-weight: 800;
-  color: var(--text);
+.kv span:last-child{
+  font-weight: 900;
+  color: var(--mz-text);
 }
 
 /* Big map card */
-.map-card {
-  height: calc(100vh - 220px); 
+.map-card{
+  height: calc(100vh - 220px); /* taller map */
   min-height: 620px;
-  display: flex;
+  display:flex;
   flex-direction: column;
 }
 
-.mini-map {
+.mini-map{
   border-radius: 14px;
   overflow: hidden;
-  border: 1px solid var(--border);
+  border: 1px solid rgba(0,0,0,0.08);
 }
 
-.mini-map.big {
-  flex: 1;
-  height: auto;
+/* Big map takes most of card */
+.mini-map.big{
+  flex:1;
+  height:auto;
   min-height: 520px;
 }
 
-.map-info { margin-top: 14px; }
+.map-info{ margin-top: 10px; }
 
 /* Sticky map on desktop */
 @media (min-width: 1100px){
-  .map-card {
+  .map-card{
     position: sticky;
-    top: 90px;
+    top: 110px; /* under green topbar */
   }
 }
 
@@ -321,84 +295,201 @@ body {
    Responsive
 ========================= */
 @media (max-width: 980px){
-  .mon-topbar { flex-wrap: wrap; }
-  .mon-center { order: 3; width: 100%; }
-  .mission-display { width: 100%; }
-  .monitor-layout { grid-template-columns: 1fr; }
-  .map-card { position: static; height: auto; min-height: auto; }
-  .mini-map.big { min-height: 340px; }
+  .mon-topbar{ flex-wrap: wrap; }
+  .mon-center{ order: 3; width: 100%; }
+  .mission-display{ width: 100%; }
+
+  .monitor-layout{
+    grid-template-columns: 1fr;
+  }
+
+  .map-card{
+    position: static;
+    height: auto;
+    min-height: auto;
+  }
+
+  .mini-map.big{
+    min-height: 340px;
+  }
 }
 
 @media (max-width: 900px){
-  .monitor-strip { flex-direction: column; align-items: stretch; gap: 12px; }
-  .strip-mid { justify-content: flex-start; }
-  .strip-right { justify-content: flex-end; }
-  .strip-meta { text-align: left; }
+  .monitor-strip{
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .strip-mid{ justify-content:flex-start; }
+  .strip-right{ justify-content:flex-end; }
+  .strip-meta{ text-align:left; }
 }
 
-#statusLed { transition: background 0.2s ease; }
+
+#statusLed {
+  transition: background 0.2s ease;
+}
+
+#miniMap.big {
+  width: 100%;
+  min-height: 520px;
+  border-radius: 18px;
+  overflow: hidden;
+}
+
 
 /* =========================
    Drone Marker (Live position)
 ========================= */
-.maizeeye-drone-icon, .oryzaid-drone-icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+
+.maizeeye-drone-icon {
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 
-/* Updated to OryzAID Purple theme */
-.maizeeye-drone-icon div, .oryzaid-drone-icon div {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--primary-purple);
-  border: 3px solid #ffffff;
+.maizeeye-drone-icon div {
+  width:18px;
+  height:18px;
+  border-radius:50%;
+  background:#22c55e;
+  border:3px solid #ffffff;
   box-shadow:
-    0 0 0 2px rgba(0,0,0,0.1),
-    0 0 12px rgba(156, 0, 150, 0.6);
+    0 0 0 2px rgba(0,0,0,0.25),
+    0 0 10px rgba(34,197,94,0.45);
 }
 
 /* =========================
    Leaflet Map Tweaks
 ========================= */
+
 .leaflet-container {
-  background: #e5e7eb;
-  font-family: "Inter", sans-serif;
+  background:#e5e7eb;
+  font-family:Poppins, Arial, sans-serif;
 }
 
-.leaflet-overlay-pane path { pointer-events: auto; }
-.leaflet-marker-icon { transition: transform 0.25s linear; }
-.leaflet-interactive { cursor: pointer; }
+/* Keep boundary/path visible above heatmap */
+
+.leaflet-overlay-pane path {
+  pointer-events:auto;
+}
+
+/* Smooth map marker movement */
+
+.leaflet-marker-icon {
+  transition: transform 0.25s linear;
+}
+
+/* =========================
+   Mission geometry styles
+========================= */
+
+.leaflet-interactive {
+  cursor:pointer;
+}
 
 /* Flight path style enhancement */
+
 .leaflet-overlay-pane polyline {
-  filter: drop-shadow(0 0 4px rgba(0,0,0,0.3));
+  filter: drop-shadow(0 0 4px rgba(0,0,0,0.45));
 }
 
 /* Boundary highlight */
+
 .leaflet-overlay-pane polygon {
-  filter: drop-shadow(0 0 4px rgba(14, 165, 233, 0.4)); /* Cyan glow */
+  filter: drop-shadow(0 0 4px rgba(246,207,58,0.4));
 }
+
 
 /* =========================
    Mission Progress
 ========================= */
-.progress-wrap {
-  margin-top: 12px;
+.progress-wrap{
+  margin-top: 10px;
   width: 100%;
   height: 12px;
   border-radius: 999px;
-  background: var(--bg);
-  border: 1px solid var(--border);
+  background: rgba(0,0,0,0.08);
   overflow: hidden;
 }
 
-.progress-bar {
+.progress-bar{
   height: 100%;
   width: 0%;
   border-radius: 999px;
-  /* Updated to OryzAID gradient */
-  background: linear-gradient(90deg, var(--primary-cyan) 0%, var(--primary-purple) 100%);
+  background: linear-gradient(90deg, #F6CF3A 0%, #22c55e 100%);
   transition: width 0.25s ease;
+}
+
+/* ===============================
+   Map Legend
+=============================== */
+
+.map-wrapper {
+  position: relative;
+}
+
+.map-legend {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 500;
+
+  background: rgba(15, 20, 18, 0.88);
+  backdrop-filter: blur(4px);
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #ffffff;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.legend-dot.drone {
+  background: #22c55e;
+  border: 2px solid #ffffff;
+}
+
+.legend-dot.field {
+  background: #F6CF3A;
+  border: 2px solid #17210f;
+}
+
+.legend-line {
+  width: 18px;
+  height: 3px;
+}
+
+.legend-line.trail {
+  background: #22c55e;
+}
+
+.legend-line.flight {
+  border-top: 3px dashed #ffffff;
+}
+
+.legend-box {
+  width: 14px;
+  height: 10px;
+}
+
+.legend-box.boundary {
+  background: rgba(246, 207, 58, 0.35);
+  border: 2px solid #F6CF3A;
 }
