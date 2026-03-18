@@ -353,19 +353,24 @@ function normalizeLabel(raw) {
   return "Unknown";
 }
 
-function getIntensity(det) {
+function getSeverityColor(det) {
   const area = safeNum(det.affected_area_percent);
   if (area != null) {
-    return Math.max(0.08, Math.min(0.32, area / 260));
+    if (area <= 30) return "#ffc107"; // Yellow (Low)
+    if (area <= 50) return "#f97316"; // Orange (Moderate)
+    return "#ef4444"; // Red (Severe)
   }
-
+  
+  // Fallback to confidence if affected_area_percent is missing
   const conf = safeNum(det.confidence);
   if (conf != null) {
-    const normalized = conf > 1 ? conf / 100 : conf;
-    return Math.max(0.08, Math.min(0.28, normalized * 0.35));
+    const norm = conf > 1 ? conf / 100 : conf;
+    if (norm <= 0.3) return "#ffc107";
+    if (norm <= 0.6) return "#f97316";
+    return "#ef4444";
   }
-
-  return 0.12;
+  
+  return "#ffc107";
 }
 
 function isDisease(label) {
@@ -374,17 +379,6 @@ function isDisease(label) {
 
 function isPest(label) {
   return ["Rice_Hispa"].includes(label);
-}
-
-function makeHeatLayer(points) {
-  // We use the same severity gradient for both Disease and Pest so it matches the bar
-  return L.heatLayer(points, {
-    radius: 22,
-    blur: 30,
-    maxZoom: 18,
-    minOpacity: 0.16,
-    gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "red" },
-  });
 }
 
 function waitForExportTiles(mapEl, timeoutMs = 3200) {
@@ -483,26 +477,36 @@ async function captureExportMap(filterType) {
       exportBounds = boundaryLayer.getBounds();
     }
 
-    const targetPoints = [];
+    const dotLayer = L.layerGroup();
     const filterBounds = exportBounds ? exportBounds.pad(0.1) : null;
 
+    // 🔥 DYNAMIC DISCRETE DOTS (Replaces blurred heatmap)
     detectionsToUse.forEach((det) => {
       const latlng = getDetectionLatLng(det);
       if (!latlng) return;
       if (filterBounds && !filterBounds.contains(latlng)) return;
 
       const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-      const point = [latlng[0], latlng[1], getIntensity(det)];
 
-      if (isDisease(label) && filterType === 'disease') {
-        targetPoints.push(point);
-      } else if (isPest(label) && filterType === 'pest') {
-        targetPoints.push(point);
+      let include = false;
+      if (isDisease(label) && filterType === 'disease') include = true;
+      if (isPest(label) && filterType === 'pest') include = true;
+
+      if (include) {
+        const severityColor = getSeverityColor(det);
+        
+        L.circleMarker(latlng, {
+          radius: 8,
+          fillColor: severityColor,
+          color: "#ffffff", // Crisp white border makes dots pop against satellite imagery
+          weight: 1.5,
+          fillOpacity: 0.85
+        }).addTo(dotLayer);
       }
     });
 
-    if (targetPoints.length) {
-      makeHeatLayer(targetPoints).addTo(exportMap);
+    if (dotLayer.getLayers().length) {
+      dotLayer.addTo(exportMap);
     }
 
     if (boundaryLayer && boundaryLayer.bringToFront) boundaryLayer.bringToFront();
@@ -699,8 +703,8 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       // SIDE-BY-SIDE MAPS
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
-      pdf.text("Disease Heatmap", 14, 55);
-      pdf.text("Pest Heatmap", 110, 55);
+      pdf.text("Disease Detections", 14, 55);
+      pdf.text("Pest Detections", 110, 55);
 
       addMapImage(pdf, diseaseMapShot, 14, 59, 86, 100);
       addMapImage(pdf, pestMapShot, 110, 59, 86, 100);
@@ -708,7 +712,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       let y = 168;
 
       // SEVERITY SCALE BAR
-      drawSectionTitle(pdf, "Severity Heatmap Scale", 14, y);
+      drawSectionTitle(pdf, "Severity Scale", 14, y);
       y += 6;
       drawGradientScale(pdf, 14, y, 182, 12);
       
