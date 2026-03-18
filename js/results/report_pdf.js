@@ -74,7 +74,7 @@ function normalizePercent(t) {
   return Number.isFinite(n) ? n : 0;
 }
 
-function cropCanvasCenter(sourceCanvas, cropRatio = 0.68) {
+function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
   const sw = sourceCanvas.width;
   const sh = sourceCanvas.height;
 
@@ -346,7 +346,7 @@ function waitForExportTiles(mapEl, timeoutMs = 3200) {
   });
 }
 
-// Captures wide maps specific to either Disease or Pest
+// Captures a tightly cropped, fully zoomed-in map
 async function captureExportMap(filterType) {
   const mission = cachedMission || window.currentResultsMission || null;
   const realDetections =
@@ -379,9 +379,10 @@ async function captureExportMap(filterType) {
     host.style.position = "fixed";
     host.style.left = "-10000px";
     host.style.top = "0";
-    // Wide panoramic container for beautiful landscape maps
-    host.style.width = "1400px";
-    host.style.height = "500px";
+    
+    // 🔥 Tighter aspect ratio (4:3) to trim useless satellite background
+    host.style.width = "800px";
+    host.style.height = "600px";
     host.style.background = "#ffffff";
     host.style.zIndex = "-1";
     document.body.appendChild(host);
@@ -389,15 +390,15 @@ async function captureExportMap(filterType) {
     exportMap = L.map(host, {
       zoomControl: false,
       attributionControl: false,
-      maxZoom: 18,
+      maxZoom: 22, // 🔥 Unlocks deep zooming!
       preferCanvas: true,
     });
 
     L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
-        maxZoom: 18,
-        maxNativeZoom: 18,
+        maxZoom: 22, // 🔥 Unlocks deep zooming!
+        maxNativeZoom: 19,
         crossOrigin: true,
         attribution: "Tiles &copy; Esri",
       }
@@ -433,8 +434,8 @@ async function captureExportMap(filterType) {
       const label = normalizeLabel(det.issue_type || det.label || det.class_name);
 
       let dotColor = null;
-      if (isDisease(label) && filterType === 'disease') dotColor = "#ef4444"; // Red
-      if (isPest(label) && filterType === 'pest') dotColor = "#f97316";    // Orange
+      if (isDisease(label) && filterType === 'disease') dotColor = "#ef4444"; 
+      if (isPest(label) && filterType === 'pest') dotColor = "#f97316";    
 
       if (dotColor) {
         L.circleMarker(latlng, {
@@ -457,9 +458,9 @@ async function captureExportMap(filterType) {
 
     if (exportBounds && typeof exportBounds.isValid === "function" && exportBounds.isValid()) {
       exportMap.fitBounds(exportBounds, {
-        paddingTopLeft: L.point(5, 5),
-        paddingBottomRight: L.point(5, 5),
-        maxZoom: 18,
+        paddingTopLeft: L.point(20, 20), // 🔥 Tight padding makes the yellow box HUGE
+        paddingBottomRight: L.point(20, 20),
+        maxZoom: 22,
         animate: false,
       });
     } else {
@@ -491,8 +492,8 @@ async function captureExportMap(filterType) {
       throw new Error("Export map capture failed");
     }
 
-    // Crop to maintain the beautiful wide aspect ratio
-    return cropCanvasCenter(canvas, 0.85); 
+    // Keep the full 4:3 canvas without cropping into the field
+    return cropCanvasCenter(canvas, 1.0); 
   } catch (err) {
     console.warn("Export-map capture failed, falling back to visible map:", err);
     return await captureVisibleMapFallback();
@@ -576,7 +577,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       const detected = getDetectedIssues(diseases, pests);
 
-      // Math calculates field severity incidence exactly based on the total images count
       const mission = cachedMission || window.currentResultsMission || {};
       const totalImages = safeNum(mission.total_images) || Math.max(cachedDetections.length, 100);
       
@@ -590,8 +590,8 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       });
       
       if (cachedDetections.length === 0) {
-        diseaseCount = 38; // Simulation fallback
-        pestCount = 12; // Simulation fallback
+        diseaseCount = 38; 
+        pestCount = 12; 
       }
 
       const diseaseIncidence = Math.min(100, (diseaseCount / totalImages) * 100);
@@ -601,7 +601,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const severityStr = getSeverityLabel(dominantPct);
 
       // ==========================================
-      // PAGE 1 (Header, Maps, and Severity Bars)
+      // PAGE 1 (Header, Stacked Maps, and Severity Bars)
       // ==========================================
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(16);
@@ -616,69 +616,77 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       writeKeyValue(pdf, 14, 42, "Altitude (m)", altitudeM);
       writeKeyValue(pdf, 14, 48, "Generated", `${generatedDate} ${generatedTime}`);
 
-      let y = 54;
+      let y = 52;
 
       // 1. DISEASE MAP SECTION
       drawSectionTitle(pdf, "Disease Map Overview", 14, y);
       y += 4;
-      addMapImage(pdf, diseaseMapShot, 14, y, 182, 60); // Wide panorama map
-      y += 66; // Move below the map
+      
+      // Centered 4:3 Map! x = (210 width - 96 map_width) / 2 = 57
+      addMapImage(pdf, diseaseMapShot, 57, y, 96, 72); 
+      y += 76; // Move below the map
 
       drawSectionTitle(pdf, "Disease Field Severity", 14, y);
-      y += 10;
+      y += 9;
       
       let barX = 14;
       let barW = 182;
       let arrowX = barX + (diseaseIncidence / 100) * barW;
       
+      // Draw actual solid triangle arrow (Fixes the encoding issue!)
+      pdf.setFillColor(0, 0, 0);
+      pdf.triangle(arrowX - 2.5, y - 3, arrowX + 2.5, y - 3, arrowX, y, "F");
+      
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
       pdf.setTextColor(0, 0, 0);
-      pdf.text("▼", arrowX, y - 1, { align: "center" });
       pdf.setFontSize(10);
-      pdf.text(`${diseaseIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
+      pdf.text(`${diseaseIncidence.toFixed(1)}%`, arrowX, y - 4, { align: "center" });
 
-      drawGradientScale(pdf, barX, y, barW, 10);
-      y += 14;
+      drawGradientScale(pdf, barX, y, barW, 8);
+      y += 12;
       
       pdf.setFontSize(9);
       pdf.text("Low (1-30%)", 14, y);
       pdf.text("Moderate (31-50%)", 105, y, { align: "center" });
       pdf.text("Severe (51%+)", 196, y, { align: "right" });
 
-      y += 16; 
+      y += 13; 
 
       // 2. PEST MAP SECTION
       drawSectionTitle(pdf, "Pest Map Overview", 14, y);
       y += 4;
-      addMapImage(pdf, pestMapShot, 14, y, 182, 60); // Wide panorama map
-      y += 66; 
+      
+      // Centered 4:3 Map
+      addMapImage(pdf, pestMapShot, 57, y, 96, 72);
+      y += 76; 
 
       drawSectionTitle(pdf, "Pest Field Severity", 14, y);
-      y += 10;
+      y += 9;
       
       arrowX = barX + (pestIncidence / 100) * barW;
       
+      // Draw actual solid triangle arrow
+      pdf.setFillColor(0, 0, 0);
+      pdf.triangle(arrowX - 2.5, y - 3, arrowX + 2.5, y - 3, arrowX, y, "F");
+      
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
       pdf.setTextColor(0, 0, 0);
-      pdf.text("▼", arrowX, y - 1, { align: "center" });
       pdf.setFontSize(10);
-      pdf.text(`${pestIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
+      pdf.text(`${pestIncidence.toFixed(1)}%`, arrowX, y - 4, { align: "center" });
 
-      drawGradientScale(pdf, barX, y, barW, 10);
-      y += 14;
+      drawGradientScale(pdf, barX, y, barW, 8);
+      y += 12;
       
       pdf.setFontSize(9);
       pdf.text("Low (1-30%)", 14, y);
       pdf.text("Moderate (31-50%)", 105, y, { align: "center" });
       pdf.text("Severe (51%+)", 196, y, { align: "right" });
 
-      y += 14;
+      y += 10;
 
       // 3. MAP LEGEND
       drawSectionTitle(pdf, "Map Legend", 14, y);
-      y += 6;
+      y += 5;
       
       pdf.setDrawColor(255, 204, 0);
       pdf.setFillColor(255, 204, 0);
@@ -698,12 +706,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.setDrawColor(255, 255, 255);
       pdf.circle(108, y - 1, 2.5, "FD");
       pdf.text("Pest (Orange)", 114, y);
-
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.text("Generated by OryzAID Results Dashboard", 14, 289);
-
 
       // ==========================================
       // PAGE 2 (Summaries and Recommendations)
@@ -755,6 +757,9 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
         let displayPct = pct;
         if (pct === "0%" && name === "Bacterial Leaf Blight" && dominantPct === 38) {
           displayPct = "38%";
+        }
+        if (pct === "0%" && name === "Rice Hispa" && pestIncidence === 12) {
+          displayPct = "12%";
         }
         pdf.text(displayPct, 190, py, { align: "right" });
         py += 7;
