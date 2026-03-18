@@ -346,7 +346,7 @@ function waitForExportTiles(mapEl, timeoutMs = 3200) {
   });
 }
 
-// Captures a tightly cropped, fully zoomed-in map
+// Captures a cropped, beautifully zoomed map with natural texture
 async function captureExportMap(filterType) {
   const mission = cachedMission || window.currentResultsMission || null;
   const realDetections =
@@ -380,7 +380,7 @@ async function captureExportMap(filterType) {
     host.style.left = "-10000px";
     host.style.top = "0";
     
-    // 🔥 Tighter aspect ratio (4:3) to trim useless satellite background
+    // 4:3 Aspect Ratio for clean rendering
     host.style.width = "800px";
     host.style.height = "600px";
     host.style.background = "#ffffff";
@@ -390,14 +390,14 @@ async function captureExportMap(filterType) {
     exportMap = L.map(host, {
       zoomControl: false,
       attributionControl: false,
-      maxZoom: 22, // 🔥 Unlocks deep zooming!
+      maxZoom: 19, // Capped at 19 to prevent gray "Map data not available" tiles
       preferCanvas: true,
     });
 
     L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
-        maxZoom: 22, // 🔥 Unlocks deep zooming!
+        maxZoom: 19, 
         maxNativeZoom: 19,
         crossOrigin: true,
         attribution: "Tiles &copy; Esri",
@@ -458,9 +458,9 @@ async function captureExportMap(filterType) {
 
     if (exportBounds && typeof exportBounds.isValid === "function" && exportBounds.isValid()) {
       exportMap.fitBounds(exportBounds, {
-        paddingTopLeft: L.point(20, 20), // 🔥 Tight padding makes the yellow box HUGE
-        paddingBottomRight: L.point(20, 20),
-        maxZoom: 22,
+        paddingTopLeft: L.point(60, 60), // Increased padding to zoom out and show field texture
+        paddingBottomRight: L.point(60, 60),
+        maxZoom: 19,
         animate: false,
       });
     } else {
@@ -492,7 +492,6 @@ async function captureExportMap(filterType) {
       throw new Error("Export map capture failed");
     }
 
-    // Keep the full 4:3 canvas without cropping into the field
     return cropCanvasCenter(canvas, 1.0); 
   } catch (err) {
     console.warn("Export-map capture failed, falling back to visible map:", err);
@@ -622,9 +621,9 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       drawSectionTitle(pdf, "Disease Map Overview", 14, y);
       y += 4;
       
-      // Centered 4:3 Map! x = (210 width - 96 map_width) / 2 = 57
+      // Centered 4:3 Map
       addMapImage(pdf, diseaseMapShot, 57, y, 96, 72); 
-      y += 76; // Move below the map
+      y += 76;
 
       drawSectionTitle(pdf, "Disease Field Severity", 14, y);
       y += 9;
@@ -633,14 +632,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       let barW = 182;
       let arrowX = barX + (diseaseIncidence / 100) * barW;
       
-      // Draw actual solid triangle arrow (Fixes the encoding issue!)
+      // Draw pristine solid vector triangle
       pdf.setFillColor(0, 0, 0);
-      pdf.triangle(arrowX - 2.5, y - 3, arrowX + 2.5, y - 3, arrowX, y, "F");
+      pdf.triangle(arrowX - 3, y - 4, arrowX + 3, y - 4, arrowX, y, "F");
       
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
-      pdf.text(`${diseaseIncidence.toFixed(1)}%`, arrowX, y - 4, { align: "center" });
+      pdf.text(`${diseaseIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
 
       drawGradientScale(pdf, barX, y, barW, 8);
       y += 12;
@@ -656,7 +655,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       drawSectionTitle(pdf, "Pest Map Overview", 14, y);
       y += 4;
       
-      // Centered 4:3 Map
       addMapImage(pdf, pestMapShot, 57, y, 96, 72);
       y += 76; 
 
@@ -665,14 +663,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       
       arrowX = barX + (pestIncidence / 100) * barW;
       
-      // Draw actual solid triangle arrow
+      // Draw pristine solid vector triangle
       pdf.setFillColor(0, 0, 0);
-      pdf.triangle(arrowX - 2.5, y - 3, arrowX + 2.5, y - 3, arrowX, y, "F");
+      pdf.triangle(arrowX - 3, y - 4, arrowX + 3, y - 4, arrowX, y, "F");
       
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
-      pdf.text(`${pestIncidence.toFixed(1)}%`, arrowX, y - 4, { align: "center" });
+      pdf.text(`${pestIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
 
       drawGradientScale(pdf, barX, y, barW, 8);
       y += 12;
