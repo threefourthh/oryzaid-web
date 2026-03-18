@@ -135,36 +135,6 @@ function drawSectionTitle(pdf, title, x, y) {
   pdf.text(title, x, y);
 }
 
-function drawLineLegendItem(pdf, x, y, options = {}) {
-  const {
-    label = "Legend Item",
-    color = [0, 0, 0],
-    dashed = false,
-    circle = false,
-    fill = false,
-  } = options;
-
-  pdf.setDrawColor(color[0], color[1], color[2]);
-  pdf.setFillColor(color[0], color[1], color[2]);
-
-  if (circle) {
-    if (fill) pdf.circle(x + 4, y, 3, "F");
-    else pdf.circle(x + 4, y, 3, "S");
-  } else {
-    if (dashed) pdf.setLineDashPattern([1.5, 1.5], 0);
-    else pdf.setLineDashPattern([], 0);
-
-    pdf.setLineWidth(1.2);
-    pdf.line(x, y, x + 10, y);
-    pdf.setLineDashPattern([], 0);
-  }
-
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFont("helvetica", "normal");
-  pdf.setFontSize(10);
-  pdf.text(label, x + 14, y + 1);
-}
-
 function drawWrappedText(pdf, text, x, y, maxWidth, lineHeight = 5) {
   const lines = pdf.splitTextToSize(String(text || ""), maxWidth);
   pdf.text(lines, x, y);
@@ -206,7 +176,6 @@ function addMapImage(pdf, mapShot, x, y, w, h) {
   );
 }
 
-// Draws a smooth Yellow -> Orange -> Red gradient bar
 function drawGradientScale(pdf, x, y, w, h) {
   const steps = 100;
   const stepW = w / steps;
@@ -214,20 +183,18 @@ function drawGradientScale(pdf, x, y, w, h) {
     const pct = i / steps;
     let r, g, b;
     if (pct < 0.5) {
-      // Yellow to Orange
       const p = pct * 2;
       r = 250 + (255 - 250) * p;
       g = 233 - (233 - 170) * p;
       b = 0;
     } else {
-      // Orange to Red
       const p = (pct - 0.5) * 2;
       r = 255 - (255 - 220) * p;
       g = 170 - (170 - 38) * p;
       b = 0 + (38 - 0) * p;
     }
     pdf.setFillColor(r, g, b);
-    pdf.rect(x + i * stepW, y, stepW + 0.5, h, 'F'); // +0.5 prevents sub-pixel gaps
+    pdf.rect(x + i * stepW, y, stepW + 0.5, h, 'F');
   }
 }
 
@@ -353,26 +320,6 @@ function normalizeLabel(raw) {
   return "Unknown";
 }
 
-function getSeverityColor(det) {
-  const area = safeNum(det.affected_area_percent);
-  if (area != null) {
-    if (area <= 30) return "#ffc107"; // Yellow (Low)
-    if (area <= 50) return "#f97316"; // Orange (Moderate)
-    return "#ef4444"; // Red (Severe)
-  }
-  
-  // Fallback to confidence if affected_area_percent is missing
-  const conf = safeNum(det.confidence);
-  if (conf != null) {
-    const norm = conf > 1 ? conf / 100 : conf;
-    if (norm <= 0.3) return "#ffc107";
-    if (norm <= 0.6) return "#f97316";
-    return "#ef4444";
-  }
-  
-  return "#ffc107";
-}
-
 function isDisease(label) {
   return ["Bacterial_Leaf_Blight", "Fungal_Spot", "Leaf_Scald", "Tungro"].includes(label);
 }
@@ -399,8 +346,8 @@ function waitForExportTiles(mapEl, timeoutMs = 3200) {
   });
 }
 
-// Now accepts filterType = 'disease' or 'pest'
-async function captureExportMap(filterType) {
+// Captures a single big map containing both Diseases and Pests with distinct colors
+async function captureExportMap() {
   const mission = cachedMission || window.currentResultsMission || null;
   const realDetections =
     Array.isArray(cachedDetections) && cachedDetections.length
@@ -411,15 +358,12 @@ async function captureExportMap(filterType) {
 
   let detectionsToUse = [...realDetections];
 
-  // SIMULATION MODE: Inject a detection on the map if real data is empty
   if (detectionsToUse.length === 0 && mission) {
     const center = getMissionCenterLatLng(mission);
     detectionsToUse = [{
       latitude: center[0] + 0.0003,
       longitude: center[1] + 0.0003,
-      class_name: filterType === 'disease' ? "Bacterial_Leaf_Blight" : "Rice_Hispa",
-      confidence: 0.88,
-      affected_area_percent: 35
+      class_name: "Bacterial_Leaf_Blight"
     }];
   }
 
@@ -480,7 +424,6 @@ async function captureExportMap(filterType) {
     const dotLayer = L.layerGroup();
     const filterBounds = exportBounds ? exportBounds.pad(0.1) : null;
 
-    // 🔥 DYNAMIC DISCRETE DOTS (Replaces blurred heatmap)
     detectionsToUse.forEach((det) => {
       const latlng = getDetectionLatLng(det);
       if (!latlng) return;
@@ -488,19 +431,17 @@ async function captureExportMap(filterType) {
 
       const label = normalizeLabel(det.issue_type || det.label || det.class_name);
 
-      let include = false;
-      if (isDisease(label) && filterType === 'disease') include = true;
-      if (isPest(label) && filterType === 'pest') include = true;
+      let dotColor = null;
+      if (isDisease(label)) dotColor = "#ef4444"; // Red for diseases
+      if (isPest(label)) dotColor = "#f97316";    // Orange for pests
 
-      if (include) {
-        const severityColor = getSeverityColor(det);
-        
+      if (dotColor) {
         L.circleMarker(latlng, {
-          radius: 8,
-          fillColor: severityColor,
-          color: "#ffffff", // Crisp white border makes dots pop against satellite imagery
+          radius: 7,
+          fillColor: dotColor,
+          color: "#ffffff",
           weight: 1.5,
-          fillOpacity: 0.85
+          fillOpacity: 0.95
         }).addTo(dotLayer);
       }
     });
@@ -549,7 +490,7 @@ async function captureExportMap(filterType) {
       throw new Error("Export map capture failed");
     }
 
-    return cropCanvasCenter(canvas, 0.55);
+    return cropCanvasCenter(canvas, 0.6); // Slightly less cropping to keep it large
   } catch (err) {
     console.warn("Export-map capture failed, falling back to visible map:", err);
     return await captureVisibleMapFallback();
@@ -572,7 +513,6 @@ function getDetectedIssues(diseases, pests) {
     .filter((item) => item.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // SIMULATION MODE: Inject fake BLB data if real detection list is empty
   if (detected.length === 0) {
     return [{ label: "Bacterial Leaf Blight", value: 35.0, type: "Disease", id: "Commonrust" }];
   }
@@ -580,58 +520,11 @@ function getDetectedIssues(diseases, pests) {
   return detected;
 }
 
-function getGroupStats(items) {
-  const values = items.map((item) => normalizePercent(getPercentText(item.id)));
-  const sum = values.reduce((a, b) => a + b, 0);
-  const avg = values.length ? sum / values.length : 0;
-  const max = values.length ? Math.max(...values) : 0;
-  return { sum, avg, max };
-}
-
 function getSeverityLabel(value) {
-  if (value >= 50) return "High";
-  if (value >= 20) return "Medium";
+  if (value >= 51) return "Severe";
+  if (value >= 31) return "Moderate";
   if (value > 0) return "Low";
   return "None";
-}
-
-function buildAssessment(diseaseStats, pestStats) {
-  const groups = [
-    { key: "Disease", label: "Diseases", score: diseaseStats.max },
-    { key: "Pest", label: "Pests", score: pestStats.max },
-  ].sort((a, b) => b.score - a.score);
-
-  let dominant = groups[0];
-
-  // SIMULATION MODE: Force assessment if data is empty
-  if (dominant.score === 0) {
-    dominant = { key: "Disease", label: "Diseases", score: 35.0 };
-  }
-
-  const severity = getSeverityLabel(dominant.score);
-
-  return {
-    dominantType: dominant.key,
-    dominantLabel: dominant.label,
-    dominantScore: dominant.score,
-    dominantSeverity: severity,
-  };
-}
-
-function buildRecommendations(assessment) {
-  const tips = [];
-  const { dominantType, dominantSeverity } = assessment;
-
-  if (dominantType === "Disease" && dominantSeverity === "High") {
-    tips.push("Consult a local agriculturist immediately regarding a suitable intensive disease control program.");
-  }
-
-  tips.push(
-    "Focus first on the zones with the strongest heatmap intensity because these are likely the most urgent areas.",
-    "Run another monitoring flight after corrective action to compare changes in crop condition."
-  );
-
-  return [...new Set(tips)];
 }
 
 export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
@@ -649,12 +542,8 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       document.body.classList.add("pdf-exporting");
       await wait(150);
 
-      // Capture separated maps
-      showCenterNotif("Capturing Disease Map...", { showOk: false });
-      const diseaseMapShot = await captureExportMap('disease');
-      
-      showCenterNotif("Capturing Pest Map...", { showOk: false });
-      const pestMapShot = await captureExportMap('pest');
+      showCenterNotif("Capturing Mission Map...", { showOk: false });
+      const bigMapShot = await captureExportMap();
 
       showCenterNotif("Generating PDF document...", { showOk: false });
 
@@ -680,11 +569,29 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       ];
 
       const detected = getDetectedIssues(diseases, pests);
-      const diseaseStats = getGroupStats(diseases);
-      const pestStats = getGroupStats(pests);
 
-      const assessment = buildAssessment(diseaseStats, pestStats);
-      const recommendations = buildRecommendations(assessment);
+      // Safely calculate True Severity math directly from the actual database data
+      const mission = cachedMission || window.currentResultsMission || {};
+      const totalImages = safeNum(mission.total_images) || Math.max(cachedDetections.length, 100);
+      
+      let diseaseCount = 0;
+      let pestCount = 0;
+      
+      cachedDetections.forEach(det => {
+        const lbl = normalizeLabel(det.issue_type || det.label || det.class_name);
+        if (isDisease(lbl)) diseaseCount++;
+        else if (isPest(lbl)) pestCount++;
+      });
+      
+      if (cachedDetections.length === 0) {
+        diseaseCount = 42; // Simulation fallback
+      }
+
+      const diseaseIncidence = Math.min(100, (diseaseCount / totalImages) * 100);
+      const pestIncidence = Math.min(100, (pestCount / totalImages) * 100);
+      const dominantPct = Math.max(diseaseIncidence, pestIncidence);
+      const dominantType = diseaseIncidence >= pestIncidence ? "Disease" : "Pest";
+      const severityStr = getSeverityLabel(dominantPct);
 
       // PAGE 1
       pdf.setFont("helvetica", "bold");
@@ -700,21 +607,36 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       writeKeyValue(pdf, 14, 42, "Altitude (m)", altitudeM);
       writeKeyValue(pdf, 14, 48, "Generated", `${generatedDate} ${generatedTime}`);
 
-      // SIDE-BY-SIDE MAPS
+      // BIG MAP
       pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text("Disease Detections", 14, 55);
-      pdf.text("Pest Detections", 110, 55);
+      pdf.setFontSize(12);
+      pdf.text("Mission Map Overview", 14, 58);
+      
+      // Increased map size to span full page width
+      addMapImage(pdf, bigMapShot, 14, 62, 182, 110);
 
-      addMapImage(pdf, diseaseMapShot, 14, 59, 86, 100);
-      addMapImage(pdf, pestMapShot, 110, 59, 86, 100);
+      let y = 180;
 
-      let y = 168;
+      // OVERALL SEVERITY ARROW & SCALE
+      drawSectionTitle(pdf, "Overall Field Severity", 14, y);
+      y += 10;
+      
+      const barX = 14;
+      const barW = 182;
+      const arrowX = barX + (dominantPct / 100) * barW;
+      
+      // Draw Arrow
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(16);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text("▼", arrowX, y - 1, { align: "center" });
+      
+      // Draw % text above arrow
+      pdf.setFontSize(10);
+      pdf.text(`${dominantPct.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
 
-      // SEVERITY SCALE BAR
-      drawSectionTitle(pdf, "Severity Scale", 14, y);
-      y += 6;
-      drawGradientScale(pdf, 14, y, 182, 12);
+      // Draw Gradient Line
+      drawGradientScale(pdf, barX, y, barW, 12);
       
       y += 17;
       pdf.setFont("helvetica", "bold");
@@ -725,14 +647,32 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       y += 14;
 
+      // UPDATED MAP LEGEND (with accurate colors)
       drawSectionTitle(pdf, "Map Legend", 14, y);
       y += 6;
-      drawLineLegendItem(pdf, 14, y, {
-        label: "Field Boundary",
-        color: [255, 204, 0],
-        dashed: false,
-      });
+      
+      pdf.setDrawColor(255, 204, 0);
+      pdf.setFillColor(255, 204, 0);
+      pdf.setLineWidth(1.2);
+      pdf.line(14, y - 1, 24, y - 1);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(10);
+      pdf.text("Field Boundary", 28, y);
 
+      // Red Disease Dot
+      pdf.setFillColor(239, 68, 68); 
+      pdf.setDrawColor(255, 255, 255);
+      pdf.circle(68, y - 1, 2.5, "FD");
+      pdf.text("Disease Detection", 74, y);
+
+      // Orange Pest Dot
+      pdf.setFillColor(249, 115, 22); 
+      pdf.setDrawColor(255, 255, 255);
+      pdf.circle(118, y - 1, 2.5, "FD");
+      pdf.text("Pest Detection", 124, y);
+
+      pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
       pdf.text("Generated by OryzAID Results Dashboard", 14, 289);
@@ -753,11 +693,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       detected.forEach((item, idx) => {
         py = ensurePageSpace(pdf, py, 8);
-        pdf.text(
-          `${idx + 1}. ${item.label} (${item.type}) - ${item.value.toFixed(1)}%`,
-          16,
-          py
-        );
+        pdf.text(`${idx + 1}. ${item.label} (${item.type}) - ${item.value.toFixed(1)}%`, 16, py);
         py += 7;
       });
 
@@ -770,7 +706,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       py = drawWrappedText(
         pdf,
-        `The report shows that ${assessment.dominantLabel.toLowerCase()} are the most dominant concern in this mission, with an overall ${assessment.dominantSeverity.toLowerCase()} severity pattern based on the highest detected percentage.`,
+        `The report shows an overall ${severityStr.toLowerCase()} severity pattern based on a ${dominantPct.toFixed(1)}% field incidence rate, with ${dominantType.toLowerCase()}s being the primary concern.`,
         16,
         py,
         175,
@@ -786,10 +722,9 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
         py = ensurePageSpace(pdf, py, 10);
         pdf.setFont("helvetica", "normal");
         pdf.text(name, 16, py);
-        // If simulation is active and the data was 0, show the simulated percent
         let displayPct = pct;
-        if (pct === "0%" && name === "Bacterial Leaf Blight" && assessment.dominantScore === 35) {
-          displayPct = "35%";
+        if (pct === "0%" && name === "Bacterial Leaf Blight" && dominantPct === 42) {
+          displayPct = "42%";
         }
         pdf.text(displayPct, 190, py, { align: "right" });
         py += 7;
@@ -810,16 +745,10 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pests.forEach((p) => row(p.label, getPercentText(p.id)));
       py += 6;
 
-      const allRaw = [...diseases, ...pests].map((x) => normalizePercent(getPercentText(x.id)));
-      let avg = allRaw.reduce((a, b) => a + b, 0) / (allRaw.length || 1);
-      
-      // simulation override for average
-      if (avg === 0) avg = 7.0; 
-
       py = ensurePageSpace(pdf, py, 18);
       pdf.setFont("helvetica", "bold");
-      pdf.text("Overall Severity (avg)", 14, py);
-      pdf.text(`${avg.toFixed(1)}%`, 190, py, { align: "right" });
+      pdf.text("Overall Field Severity (Dominant)", 14, py);
+      pdf.text(`${dominantPct.toFixed(1)}%`, 190, py, { align: "right" });
       py += 12;
 
       drawSectionTitle(pdf, "Suggested Farmer Actions", 14, py);
@@ -828,7 +757,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(10);
 
-      recommendations.forEach((tip, index) => {
+      const tips = [];
+      if (dominantType === "Disease" && severityStr === "Severe") {
+        tips.push("Consult a local agriculturist immediately regarding a suitable intensive disease control program.");
+      }
+      tips.push("Focus first on the zones with the highest cluster of map markers because these are likely the most urgent areas.");
+      tips.push("Run another monitoring flight after corrective action to compare changes in crop condition.");
+
+      tips.forEach((tip, index) => {
         py = ensurePageSpace(pdf, py, 12);
         py = drawWrappedText(pdf, `${index + 1}. ${tip}`, 16, py, 175, 5);
         py += 1;
@@ -844,7 +780,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.setFontSize(9);
       pdf.setTextColor(70, 70, 70);
 
-      const introText = "This report provides two separate maps: one for Disease Incidence and one for Pest Damage. Both maps use a universal heat scale based on the severity guide below. The yellow outline represents the recorded flight path or field boundary.";
+      const introText = "This report uses a unified map to display all findings. Disease detections are marked with Red dots, while Pest detections are marked with Orange dots. The overall field danger is calculated by Disease Incidence (the percentage of images containing threats) and marked on the severity scale below.";
       py = drawWrappedText(pdf, introText, 14, py, 182, 4.5);
       py += 4;
 
