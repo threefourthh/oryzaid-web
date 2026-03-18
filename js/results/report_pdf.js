@@ -779,52 +779,12 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       py = ensurePageSpace(pdf, py, 18);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(0, 0, 0);
-      pdf.text("Overall Field Severity (Dominant)", 14, py);
-      pdf.text(`${dominantPct.toFixed(1)}%`, 190, py, { align: "right" });
+      pdf.text("Overall Disease Field Severity", 14, py);
+      pdf.text(`${diseaseIncidence.toFixed(1)}%`, 190, py, { align: "right" });
+      py += 7;
+      pdf.text("Overall Pest Field Severity", 14, py);
+      pdf.text(`${pestIncidence.toFixed(1)}%`, 190, py, { align: "right" });
       py += 14;
-
-      // ==========================================
-      // AI CONFIDENCE & ACCURACY SECTION
-      // ==========================================
-      drawSectionTitle(pdf, "AI Confidence & Accuracy", 14, py);
-      py += 8;
-
-      const drawAiRow = (k1, v1, k2, v2) => {
-        py = ensurePageSpace(pdf, py, 8);
-        
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(10);
-        pdf.setTextColor(100, 100, 100);
-        pdf.text(k1, 16, py);
-        
-        pdf.setFont("helvetica", "bold");
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(String(v1), 54, py);
-        
-        if (k2 && v2) {
-          pdf.setFont("helvetica", "normal");
-          pdf.setTextColor(100, 100, 100);
-          pdf.text(k2, 105, py);
-          
-          pdf.setFont("helvetica", "bold");
-          pdf.setTextColor(0, 0, 0);
-          pdf.text(String(v2), 142, py);
-        }
-        py += 7;
-      };
-
-      const tDet = getText("aiTotalDetections") || cachedDetections.length || "0";
-      const tAvg = getText("aiAvgConfidence") || "0%";
-      const tHigh = getText("aiHighConfidence") || "0";
-      const tMedLow = `${getText("aiMediumConfidence") || "0"} / ${getText("aiLowConfidence") || "0"}`;
-      const tRel = getText("aiReliability") || "—";
-      const tPrec = getText("aiPrecision") || "0.942";
-      
-      drawAiRow("Total Detections:", tDet, "Avg Confidence:", tAvg);
-      drawAiRow("High Confidence:", tHigh, "Reliability:", tRel);
-      drawAiRow("Med / Low Conf:", tMedLow, "Model Precision:", tPrec);
-      
-      py += 12;
 
       // ==========================================
       // EXHAUSTIVE REPORT GUIDE & SEVERITY SCALE
