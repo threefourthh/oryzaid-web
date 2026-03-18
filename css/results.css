@@ -174,18 +174,20 @@ body{
 ========================= */
 .layer-status-bar{
   position:absolute; top:14px; left:14px; z-index:450;
-  display:flex; flex-wrap:wrap; gap:8px; pointer-events:none;
+  display:flex; flex-wrap:wrap; gap:8px;
 }
 
 .layer-chip{
-  pointer-events:auto; display:inline-flex; align-items:center; justify-content:center;
+  display:inline-flex; align-items:center; justify-content:center;
   min-height:34px; padding:0 14px; border-radius:999px; font-size:12px; font-weight:700;
   border:1px solid rgba(0,0,0,.08); box-shadow:0 4px 10px rgba(0,0,0,.08); backdrop-filter:blur(8px);
+  transition: all 0.2s;
 }
+.layer-chip:hover { transform: translateY(-1px); filter: brightness(0.95); }
 
 .layer-chip.disease.on{ background:rgba(253,242,248,.96); border-color:#fbcfe8; color:#be185d; }
 .layer-chip.pest.on{ background:rgba(255,247,237,.96); border-color:#ffedd5; color:#c2410c; }
-.layer-chip.off{ background:rgba(243,244,246,.96); border-color:#e5e7eb; color:#6b7280; }
+.layer-chip.off{ background:rgba(243,244,246,.96); border-color:#e5e7eb; color:#6b7280; opacity: 0.7; }
 
 /* =========================
    RIGHT PANEL
@@ -201,9 +203,20 @@ body{
 .panel::-webkit-scrollbar-track{ background:transparent; }
 
 /* =========================
-   RESULT BOXES
+   RESULT BOXES & TOGGLES
 ========================= */
-.resultbox{ display:flex; flex-direction:column; gap:10px; }
+.resultbox{ display:flex; flex-direction:column; gap:10px; transition: all 0.3s ease; }
+
+/* Smart Hiding */
+.hidden-row { display: none !important; }
+
+/* Active vs Inactive State */
+.active-card { opacity: 1; filter: grayscale(0%); }
+.inactive-card { opacity: 0.55; filter: grayscale(60%); }
+.inactive-card .rnow { background: #f9fafb; }
+
+.clickable-header { cursor: pointer; transition: all 0.2s; }
+.clickable-header:hover { filter: brightness(0.95); transform: translateY(-1px); }
 
 .resultbox .top{
   display:flex; align-items:center; justify-content:space-between;
@@ -218,18 +231,42 @@ body{
   padding:10px 12px; border-radius:14px; background:var(--card); border:var(--border);
 }
 
-.rnow label{ flex:1; font-weight:600; color:var(--text); font-size: 13px; }
+.rnow label, .result-label{ flex:1; font-weight:600; color:var(--text); font-size: 13px; }
 .rnow span{ font-weight:800; color:var(--primary); font-size: 14px; }
 
 .seebutton{
   width:40px; height:40px; border-radius:12px; border:var(--border); background:#f9fafb;
-  cursor:pointer; display:flex; align-items:center; justify-content:center;
-  transition:all .15s ease;
+  display:flex; align-items:center; justify-content:center;
 }
-
-.seebutton:hover{ background:#f3f4f6; transform:translateY(-1px); }
-.seebutton:active{ transform:translateY(0); }
 .seebutton img{ width:18px; height:18px; opacity: 0.7; }
+
+/* =========================
+   NEW: SEVERITY SCALE
+========================= */
+.severity-card { gap: 0; }
+.severity-content {
+  padding: 16px; background: #fff; border-radius: 0 0 14px 14px; border: var(--border); border-top: 0;
+}
+.severity-value-text {
+  font-weight: 800; color: var(--text); font-size: 15px; margin-bottom: 20px; text-align: center;
+}
+.severity-track-container {
+  position: relative; width: 100%; height: 32px; margin-bottom: 8px;
+}
+/* Beautiful, smooth CSS gradient matching your image scale */
+.severity-gradient {
+  width: 100%; height: 16px; border-radius: 8px; position: absolute; bottom: 0;
+  background: linear-gradient(to right, #fae900 0%, #ffaa00 30%, #ff7300 50%, #e60000 100%);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+.severity-arrow {
+  position: absolute; top: -6px; left: 0%; transform: translateX(-50%);
+  transition: left 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  font-size: 20px; color: var(--text); z-index: 2; text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+.severity-labels {
+  display: flex; justify-content: space-between; font-size: 11px; font-weight: 700; color: var(--muted); padding: 0 4px;
+}
 
 /* =========================
    META CARD
@@ -266,12 +303,12 @@ body{
 .collapsible-toggle{
   width:100%; border:0; background:transparent; color:inherit;
   display:flex; align-items:center; justify-content:space-between;
-  cursor:pointer; font:inherit; padding:0;
+  cursor:pointer; font:inherit; padding:0; text-align: left;
 }
 
 .collapse-icon{ font-size:20px; font-weight:700; line-height:1; }
 .collapsible-content{ overflow:hidden; transition:all .25s ease; max-height:1200px; opacity:1; margin-top:10px; }
-.collapsible-content.collapsed{ max-height:0; opacity:0; margin-top:0; }
+.collapsible-content[hidden]{ display: none; }
 
 /* =========================
    PANEL ACTIONS
@@ -282,29 +319,21 @@ body{
   background:linear-gradient(to top, rgba(255,255,255,1) 40%, rgba(255,255,255,.80), transparent);
 }
 
-#printBtn, #downloadPdfBtn{
+#downloadPdfBtn{
   width:100%; max-width:720px; height:46px; border-radius:50px; border:none;
   background:var(--primary); color:#fff; font-weight:700; font-size: 14px;
   cursor:pointer; transition:all .15s ease; box-shadow: 0 4px 12px rgba(156,0,150,0.2);
 }
 
-#printBtn:hover, #downloadPdfBtn:hover{ background:var(--primaryDark); transform:translateY(-1px); }
-#printBtn:active, #downloadPdfBtn:active{ transform:translateY(0); }
+#downloadPdfBtn:hover{ background:var(--primaryDark); transform:translateY(-1px); }
+#downloadPdfBtn:active{ transform:translateY(0); }
 
 /* =========================
    REPORT / PDF HELPERS
 ========================= */
-.reportHeader{
-  margin:12px; padding:16px 20px; border-radius:18px; background:var(--card);
-  box-shadow:var(--shadow); border: var(--border);
-}
-.reportHeader .title{ font-weight:800; font-size:18px; color: var(--primary); }
-.reportHeader .meta{ margin-top:8px; display:flex; gap:16px; flex-wrap:wrap; font-size:13px; color: var(--muted); }
-
 body.pdf-exporting .leaflet-control-container,
 body.pdf-exporting .topbar,
 body.pdf-exporting .back,
-body.pdf-exporting #printBtn,
 body.pdf-exporting #downloadPdfBtn{ display:none !important; }
 
 /* =========================
@@ -324,23 +353,6 @@ body.pdf-exporting #downloadPdfBtn{ display:none !important; }
 .center-notif-ok:hover{ background:var(--primaryDark); transform:translateY(-1px); }
 
 /* =========================
-   LEAFLET LEGEND
-========================= */
-.maizeeye-legend{
-  background:rgba(255,255,255,0.95); padding:14px; border-radius:14px;
-  box-shadow:var(--shadow); border:var(--border); width:200px; font-size:12px; backdrop-filter: blur(8px);
-}
-.maizeeye-legend .legend-title{ font-weight:800; margin-bottom:10px; color:var(--text); }
-.legend-item{ margin-bottom:8px; }
-.legend-label{ font-weight:600; display:block; margin-bottom:4px; color: var(--muted); }
-.legend-gradient{ height:10px; border-radius:6px; }
-
-.legend-gradient.disease{ background:linear-gradient(to right, rgba(225,29,72,0.15), rgba(225,29,72,0.55), rgba(225,29,72,1)); }
-.legend-gradient.pest{ background:linear-gradient(to right, rgba(234,88,12,0.15), rgba(234,88,12,0.55), rgba(234,88,12,1)); }
-
-.legend-scale{ display:flex; justify-content:space-between; font-size:11px; margin-top:6px; color:var(--muted); font-weight:600; }
-
-/* =========================
    RESPONSIVE & PRINT
 ========================= */
 @media (max-width: 980px){
@@ -349,21 +361,7 @@ body.pdf-exporting #downloadPdfBtn{ display:none !important; }
   .map-stage, #map{ min-height:320px; height:100%; }
   .panel{ height:auto; max-height:none; overflow:visible; }
 }
-
-@media print{
-  .topbar, .mission-bar, .back, .panel-actions, #printBtn, #downloadPdfBtn, .layer-status-bar{ display:none !important; }
-  body{ background:#fff !important; overflow:visible !important; }
-  .results-layout{ display:block !important; height:auto !important; min-height:0 !important; padding:0 !important; margin:0 !important; overflow:visible !important; }
-  .report-root{ display:block !important; height:auto !important; }
-  .map-stage, #map{ height:420px !important; min-height:420px !important; box-shadow:none !important; border:1px solid #ddd !important; border-radius:12px !important; page-break-inside:avoid; }
-  .panel{ box-shadow:none !important; border:1px solid #ddd !important; margin-top:12px !important; height:auto !important; overflow:visible !important; page-break-inside:avoid; }
-  .leaflet-control-container, .leaflet-control-attribution{ display:none !important; }
-}
-
 .map-stage .leaflet-top.leaflet-left { top: 64px; left: 12px; }
 @media (max-width: 768px) { .map-stage .leaflet-top.leaflet-left { top: 78px; left: 12px; } }
-.collapsible-content[hidden] { display: none; }
-.result-label { flex: 1; }
-.ai-card .collapsible-toggle { width: 100%; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .ai-health-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
 @media (max-width: 640px) { .ai-health-grid { grid-template-columns: 1fr; } }

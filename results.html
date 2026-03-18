@@ -43,8 +43,9 @@
       <!-- LEFT: MAP STAGE -->
       <section class="map-stage" aria-label="Map section">
         <div class="layer-status-bar" id="layerStatusBar" aria-label="Active heatmap layers">
-          <span class="layer-chip disease on" id="chipDisease">Diseases: ON</span>
-          <span class="layer-chip pest on" id="chipPest">Pests: ON</span>
+          <!-- Made these clickable -->
+          <span class="layer-chip disease on" id="chipDisease" style="cursor: pointer;">Diseases: ON</span>
+          <span class="layer-chip pest off" id="chipPest" style="cursor: pointer;">Pests: OFF</span>
         </div>
 
         <div id="map" role="application" aria-label="OryzAID results map"></div>
@@ -93,59 +94,82 @@
           </div>
         </section>
 
-        <!-- DISEASES (Updated to Rice Diseases) -->
-        <section class="resultbox" id="disresult">
-          <div class="top">
+        <!-- DISEASES -->
+        <section class="resultbox active-card" id="disresult">
+          <div class="top clickable-header" id="diseaseHeader" title="Click to view Diseases">
             <span>DISEASES</span>
             <img src="assets/icons/virus.png" alt="Diseases">
           </div>
 
-          <div class="rnow">
-            <button type="button" class="seebutton" id="CRsee" title="Toggle diseases heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
+          <div class="rnow" id="row_Bacterial_Leaf_Blight">
+            <button type="button" class="seebutton">
+              <img src="assets/icons/view.png" alt="Icon">
             </button>
             <span class="result-label">Bacterial Leaf Blight</span>
-            <span id="Commonrust">00%</span>
+            <span id="Commonrust">0%</span>
           </div>
 
-          <div class="rnow">
-            <button type="button" class="seebutton" id="lbsee" title="Toggle diseases heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
+          <div class="rnow" id="row_Fungal_Spot">
+            <button type="button" class="seebutton">
+              <img src="assets/icons/view.png" alt="Icon">
             </button>
             <span class="result-label">Fungal Spot (Brown Spot, Leaf Blast, Sheath Blight)</span>
-            <span id="NCLB">00%</span>
+            <span id="NCLB">0%</span>
           </div>
 
-          <div class="rnow">
-            <button type="button" class="seebutton" id="glssee" title="Toggle diseases heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
+          <div class="rnow" id="row_Leaf_Scald">
+            <button type="button" class="seebutton">
+              <img src="assets/icons/view.png" alt="Icon">
             </button>
             <span class="result-label">Leaf Scald</span>
-            <span id="GrayLeafSpot">00%</span>
+            <span id="GrayLeafSpot">0%</span>
           </div>
 
-          <div class="rnow">
-            <button type="button" class="seebutton" id="FAWsee" title="Toggle diseases heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
+          <div class="rnow" id="row_Tungro">
+            <button type="button" class="seebutton">
+              <img src="assets/icons/view.png" alt="Icon">
             </button>
             <span class="result-label">Tungro</span>
-            <span id="FAW">00%</span>
+            <span id="FAW">0%</span>
           </div>
         </section>
 
-        <!-- PESTS (Updated to Rice Pests) -->
-        <section class="resultbox" id="pestresult">
-          <div class="top">
+        <!-- PESTS -->
+        <section class="resultbox inactive-card" id="pestresult">
+          <div class="top clickable-header" id="pestHeader" title="Click to view Pests">
             <span>PESTS</span>
             <img src="assets/icons/bugs.png" alt="Pests">
           </div>
 
-          <div class="rnow">
-            <button type="button" class="seebutton" id="VGsee" title="Toggle pests heatmap">
-              <img src="assets/icons/view.png" alt="Toggle visibility">
+          <div class="rnow" id="row_Rice_Hispa">
+            <button type="button" class="seebutton">
+              <img src="assets/icons/view.png" alt="Icon">
             </button>
             <span class="result-label">Rice Hispa</span>
-            <span id="grasshopper">00%</span>
+            <span id="grasshopper">0%</span>
+          </div>
+        </section>
+
+        <!-- NEW: SEVERITY SCALE -->
+        <section class="resultbox severity-card" id="severityCard">
+          <div class="top">
+            <span id="severityTitle">DISEASE SEVERITY</span>
+            <img src="assets/icons/info.png" alt="Severity">
+          </div>
+          
+          <div class="severity-content">
+            <div class="severity-value-text" id="severityValueText">Average: 0% (None)</div>
+            
+            <div class="severity-track-container">
+              <div class="severity-arrow" id="severityArrow">▼</div>
+              <div class="severity-gradient"></div>
+            </div>
+            
+            <div class="severity-labels">
+              <span>Low (1-30%)</span>
+              <span>Mod (31-50%)</span>
+              <span>Severe (51%+)</span>
+            </div>
           </div>
         </section>
 

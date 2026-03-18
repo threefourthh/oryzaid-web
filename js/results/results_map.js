@@ -1,10 +1,8 @@
-// js/results/results_map.js
 import { apiGet } from "../core/api.js";
 
 export function initResultsMap({ mapId = "map" } = {}) {
-  // 1. Unlocking deeper zoom levels
-  const ACTUAL_MAX_ZOOM = 22; // How far you can actually zoom in
-  const MAX_NATIVE_ZOOM = 19; // When Esri stops providing new images and Leaflet starts stretching them
+  const ACTUAL_MAX_ZOOM = 22; 
+  const MAX_NATIVE_ZOOM = 19; 
 
   const map = L.map(mapId, {
     maxZoom: ACTUAL_MAX_ZOOM,
@@ -14,7 +12,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   map.setView([17.6534, 121.7334], 18);
 
-  // 2. Add the native zoom limit to the tile layer
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
     {
@@ -33,25 +30,26 @@ export function initResultsMap({ mapId = "map" } = {}) {
   const diseaseMarkersLayer = L.layerGroup().addTo(map);
   const pestMarkersLayer = L.layerGroup().addTo(map);
 
-  let diseaseVisible = true;
-  let pestVisible = true;
+  // 🔥 NEW: Toggle State (Radio behavior)
+  let currentView = 'disease'; // 'disease' or 'pest'
+  let avgDiseaseSeverity = 0;
+  let avgPestSeverity = 0;
 
   const percentEls = {
-    Bacterial_Leaf_Blight: document.getElementById("Commonrust"),
-    Fungal_Spot: document.getElementById("NCLB"),
-    Leaf_Scald: document.getElementById("GrayLeafSpot"),
-    Tungro: document.getElementById("FAW"),
-    Rice_Hispa: document.getElementById("grasshopper"),
+    Bacterial_Leaf_Blight: { id: "Commonrust", row: "row_Bacterial_Leaf_Blight" },
+    Fungal_Spot: { id: "NCLB", row: "row_Fungal_Spot" },
+    Leaf_Scald: { id: "GrayLeafSpot", row: "row_Leaf_Scald" },
+    Tungro: { id: "FAW", row: "row_Tungro" },
+    Rice_Hispa: { id: "grasshopper", row: "row_Rice_Hispa" },
   };
 
-  const diseaseBtns = [
-    document.getElementById("CRsee"),
-    document.getElementById("lbsee"),
-    document.getElementById("glssee"),
-    document.getElementById("FAWsee"),
-  ];
-
-  const pestBtns = [document.getElementById("VGsee")];
+  // UI Elements
+  const headerDisease = document.getElementById("diseaseHeader");
+  const headerPest = document.getElementById("pestHeader");
+  const chipDisease = document.getElementById("chipDisease");
+  const chipPest = document.getElementById("chipPest");
+  const cardDisease = document.getElementById("disresult");
+  const cardPest = document.getElementById("pestresult");
 
   function safeNum(value, fallback = null) {
     const n = Number(value);
@@ -78,7 +76,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
     let lat = parseFloat(det.latitude ?? det.lat ?? det.gps_lat ?? det.center_lat);
     let lng = parseFloat(det.longitude ?? det.lng ?? det.lon ?? det.gps_lng ?? det.center_lng);
 
-    // 🔥 FOOLPROOF FALLBACK: Use the exact center of the yellow boundary box if DB coords are missing
     if (isNaN(lat) || isNaN(lng)) {
       let baseLat = 17.6534;
       let baseLng = 121.7334;
@@ -92,7 +89,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
         baseLng = safeNum(mission.center_lng, 121.7334);
       }
 
-      // Small scatter effect so the heatmaps don't stack directly on a single pixel
       lat = baseLat + (Math.random() * 0.0006 - 0.0003);
       lng = baseLng + (Math.random() * 0.0006 - 0.0003);
     }
@@ -114,6 +110,36 @@ export function initResultsMap({ mapId = "map" } = {}) {
     return ["Rice_Hispa"].includes(label);
   }
 
+  // 🔥 NEW: Updates the UI Severity Scale based on active view
+  function updateSeverityUI() {
+    const arrow = document.getElementById("severityArrow");
+    const textObj = document.getElementById("severityValueText");
+    const titleObj = document.getElementById("severityTitle");
+
+    let val = currentView === 'disease' ? avgDiseaseSeverity : avgPestSeverity;
+    val = Math.max(0, Math.min(100, val)); // Clamp between 0-100
+
+    if (arrow) arrow.style.left = `${val}%`;
+
+    if (!textObj || !titleObj) return;
+
+    titleObj.textContent = currentView === 'disease' ? "DISEASE SEVERITY" : "PEST SEVERITY";
+
+    if (val === 0) {
+      textObj.textContent = "Average: 0% (No Detection)";
+      textObj.style.color = "var(--muted)";
+    } else if (val <= 30) {
+      textObj.textContent = `Average: ${val.toFixed(0)}% (Low / Slight)`;
+      textObj.style.color = "#d97706"; // Yellow/Orange
+    } else if (val <= 50) {
+      textObj.textContent = `Average: ${val.toFixed(0)}% (Moderate)`;
+      textObj.style.color = "#ea580c"; // Orange
+    } else {
+      textObj.textContent = `Average: ${val.toFixed(0)}% (Severe)`;
+      textObj.style.color = "#dc2626"; // Red
+    }
+  }
+
   function updatePercentages(detections) {
     const totals = { Bacterial_Leaf_Blight: 0, Fungal_Spot: 0, Leaf_Scald: 0, Tungro: 0, Rice_Hispa: 0 };
     const counts = { Bacterial_Leaf_Blight: 0, Fungal_Spot: 0, Leaf_Scald: 0, Tungro: 0, Rice_Hispa: 0 };
@@ -126,12 +152,38 @@ export function initResultsMap({ mapId = "map" } = {}) {
       else { totals[key] += 1; counts[key] += 1; }
     });
 
+    let dSum = 0, dCount = 0;
+    let pSum = 0, pCount = 0;
+
     Object.keys(percentEls).forEach((key) => {
-      const el = percentEls[key];
-      if (!el) return;
+      const elInfo = percentEls[key];
+      const spanEl = document.getElementById(elInfo.id);
+      const rowEl = document.getElementById(elInfo.row);
+      
       let value = counts[key] > 0 ? (totals[key] > counts[key] ? totals[key] / counts[key] : totals[key]) : 0;
-      el.textContent = `${Math.max(0, Math.min(100, value)).toFixed(0)}%`;
+      
+      if (spanEl) spanEl.textContent = `${Math.max(0, Math.min(100, value)).toFixed(0)}%`;
+
+      // 🔥 Smart Hiding: Hide the row if detection is 0%
+      if (rowEl) {
+        if (value === 0) {
+          rowEl.classList.add("hidden-row");
+        } else {
+          rowEl.classList.remove("hidden-row");
+        }
+      }
+
+      // Calculate Averages for the Severity Bar
+      if (value > 0) {
+        if (isDisease(key)) { dSum += value; dCount++; }
+        if (isPest(key)) { pSum += value; pCount++; }
+      }
     });
+
+    avgDiseaseSeverity = dCount > 0 ? dSum / dCount : 0;
+    avgPestSeverity = pCount > 0 ? pSum / pCount : 0;
+    
+    updateSeverityUI();
   }
 
   function clearLayers() {
@@ -144,36 +196,54 @@ export function initResultsMap({ mapId = "map" } = {}) {
     window.fieldBoundaryLayer = null;
   }
 
+  // 🔥 NEW: Applies visibility based on Radio logic (Current View)
   function applyVisibility() {
+    // Map Heatmaps
     if (diseaseHeatLayer) {
-      if (diseaseVisible && !map.hasLayer(diseaseHeatLayer)) diseaseHeatLayer.addTo(map);
-      if (!diseaseVisible && map.hasLayer(diseaseHeatLayer)) map.removeLayer(diseaseHeatLayer);
+      if (currentView === 'disease' && !map.hasLayer(diseaseHeatLayer)) diseaseHeatLayer.addTo(map);
+      if (currentView !== 'disease' && map.hasLayer(diseaseHeatLayer)) map.removeLayer(diseaseHeatLayer);
     }
     if (pestHeatLayer) {
-      if (pestVisible && !map.hasLayer(pestHeatLayer)) pestHeatLayer.addTo(map);
-      if (!pestVisible && map.hasLayer(pestHeatLayer)) map.removeLayer(pestHeatLayer);
+      if (currentView === 'pest' && !map.hasLayer(pestHeatLayer)) pestHeatLayer.addTo(map);
+      if (currentView !== 'pest' && map.hasLayer(pestHeatLayer)) map.removeLayer(pestHeatLayer);
     }
+
+    // Map Chips
+    if (chipDisease) {
+      chipDisease.textContent = currentView === 'disease' ? "Diseases: ON" : "Diseases: OFF";
+      chipDisease.className = currentView === 'disease' ? "layer-chip disease on" : "layer-chip disease off";
+    }
+    if (chipPest) {
+      chipPest.textContent = currentView === 'pest' ? "Pests: ON" : "Pests: OFF";
+      chipPest.className = currentView === 'pest' ? "layer-chip pest on" : "layer-chip pest off";
+    }
+
+    // Panel Highlighting
+    if (cardDisease && cardPest) {
+      if (currentView === 'disease') {
+        cardDisease.classList.replace("inactive-card", "active-card");
+        cardPest.classList.replace("active-card", "inactive-card");
+      } else {
+        cardPest.classList.replace("inactive-card", "active-card");
+        cardDisease.classList.replace("active-card", "inactive-card");
+      }
+    }
+
+    updateSeverityUI();
   }
 
-  function setButtonsState(buttons, visible) {
-    buttons.forEach((btn) => {
-      if (!btn) return;
-      btn.dataset.active = visible ? "1" : "0";
-      btn.style.opacity = visible ? "1" : "0.55";
-    });
-  }
+  // Set up click listeners for the Radio Toggle feature
+  function setupToggles() {
+    const switchView = (view) => {
+      currentView = view;
+      applyVisibility();
+    };
 
-  function syncLayerStatusBar() {
-    const dEl = document.getElementById("chipDisease");
-    if (dEl) { dEl.textContent = `Diseases: ${diseaseVisible ? "ON" : "OFF"}`; dEl.className = diseaseVisible ? "on" : "off"; }
-    const pEl = document.getElementById("chipPest");
-    if (pEl) { pEl.textContent = `Pests: ${pestVisible ? "ON" : "OFF"}`; pEl.className = pestVisible ? "on" : "off"; }
-  }
-
-  function syncAllButtonStates() {
-    setButtonsState(diseaseBtns, diseaseVisible);
-    setButtonsState(pestBtns, pestVisible);
-    syncLayerStatusBar();
+    if (headerDisease) headerDisease.addEventListener("click", () => switchView('disease'));
+    if (chipDisease) chipDisease.addEventListener("click", () => switchView('disease'));
+    
+    if (headerPest) headerPest.addEventListener("click", () => switchView('pest'));
+    if (chipPest) chipPest.addEventListener("click", () => switchView('pest'));
   }
 
   function renderFieldBoundary(mission) {
@@ -213,11 +283,8 @@ export function initResultsMap({ mapId = "map" } = {}) {
       else if (isPest(label)) pestPoints.push([latlng[0], latlng[1], intensity]);
     });
 
-    console.log("✅ Final Points Placed in Boundary:", diseasePoints);
-
     updatePercentages(detections);
 
-    // 3. Keep heat layers visible even when zooming all the way in
     if (diseasePoints.length > 0) {
       diseaseHeatLayer = L.heatLayer(diseasePoints, {
         radius: 40,
@@ -239,7 +306,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
     }
 
     applyVisibility();
-    syncAllButtonStates();
   }
 
   async function loadMission(missionId) {
@@ -250,16 +316,12 @@ export function initResultsMap({ mapId = "map" } = {}) {
       const { mission, detections } = normalizeMissionPayload(payload);
 
       clearLayers();
-
-      // Draw boundary
       renderFieldBoundary(mission);
 
-      // Instantly snap to the field without animating
       if (window.fieldBoundaryLayer) {
         map.fitBounds(window.fieldBoundaryLayer.getBounds(), { padding: [10, 10], animate: false });
       }
 
-      // Drop the heatmaps directly inside the boundary
       renderHeatmaps(detections, mission);
 
       window.dispatchEvent(new CustomEvent("maizeeye:mission-data-loaded", { detail: { mission, detections } }));
@@ -269,13 +331,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
     }
   }
 
-  diseaseBtns.forEach((btn) => {
-    btn?.addEventListener("click", () => { diseaseVisible = !diseaseVisible; applyVisibility(); syncAllButtonStates(); });
-  });
-
-  pestBtns.forEach((btn) => {
-    btn?.addEventListener("click", () => { pestVisible = !pestVisible; applyVisibility(); syncAllButtonStates(); });
-  });
+  setupToggles();
 
   window.addEventListener("maizeeye:mission-selected", (e) => {
     const missionId = e.detail?.missionId || e.detail?.mission_id || e.detail?.id || e.detail;
