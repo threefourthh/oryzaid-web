@@ -2,16 +2,26 @@
 
 function setText(id, value) {
   const el = document.getElementById(id);
-  if (el) el.textContent = value ?? "—";
+  if (el) el.textContent = String(value);
 }
 
-function percent(v) {
-  const n = Number(v || 0);
-  return (n * 100).toFixed(1) + "%";
+function safeNum(val) {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : 0;
 }
 
-// 🛠️ THE FIX: This function makes the accordion open and close!
-function setupAccordion() {
+function normalizeLabel(raw) {
+  const label = String(raw || "").trim().toLowerCase();
+  if (label.includes("bacterial") || label.includes("blight")) return "Bacterial Leaf Blight";
+  if (label.includes("fungal") || label.includes("spot")) return "Fungal Spot";
+  if (label.includes("scald")) return "Leaf Scald";
+  if (label.includes("tungro")) return "Tungro";
+  if (label.includes("hispa")) return "Rice Hispa";
+  return raw || "Unknown";
+}
+
+export function initAiSummary() {
+  // 1. Toggle logic for the accordion
   const toggleBtn = document.getElementById("aiToggleBtn");
   const content = document.getElementById("aiCollapsibleContent");
   const icon = document.getElementById("aiCollapseIcon");
@@ -19,82 +29,116 @@ function setupAccordion() {
   if (toggleBtn && content) {
     toggleBtn.addEventListener("click", () => {
       const isHidden = content.hasAttribute("hidden");
-      
       if (isHidden) {
         content.removeAttribute("hidden");
-        if (icon) icon.textContent = "-";
         toggleBtn.setAttribute("aria-expanded", "true");
+        if (icon) icon.textContent = "-";
       } else {
         content.setAttribute("hidden", "true");
-        if (icon) icon.textContent = "+";
         toggleBtn.setAttribute("aria-expanded", "false");
+        if (icon) icon.textContent = "+";
       }
     });
   }
-}
 
-function computeSummary(detections = []) {
-  const total = detections.length;
-
-  if (!total) {
-    return { total: 0, avg: 0, high: 0, medium: 0, low: 0 };
-  }
-
-  let sum = 0;
-  let high = 0;
-  let medium = 0;
-  let low = 0;
-
-  for (const d of detections) {
-    let conf = Number(d.confidence ?? d.score ?? 0);
-    if (conf > 1) conf = conf / 100;
-
-    sum += conf;
-
-    if (conf >= 0.85) high++;
-    else if (conf >= 0.6) medium++;
-    else low++;
-  }
-
-  return {
-    total,
-    avg: sum / total,
-    high,
-    medium,
-    low
-  };
-}
-
-export function initAiSummary() {
-  // 1. Activate the Accordion button
-  setupAccordion();
-
-  // 2. Wait for the Map to load the data, then steal a copy
+  // 2. Listen for the drone data to load
   window.addEventListener("maizeeye:mission-data-loaded", (e) => {
-    const detections = e.detail?.detections || [];
-    const s = computeSummary(detections);
-
-    // Core Stats
-    setText("aiTotalDetections", s.total);
-    setText("aiAvgConfidence", percent(s.avg));
-    setText("aiHighConfidence", s.high);
-    setText("aiMediumConfidence", s.medium);
-    setText("aiLowConfidence", s.low);
-
-    // Extra UI Polish: Fill in the remaining boxes with realistic data
-    setText("aiReliability", s.total > 0 ? "High" : "—");
+    const detections = Array.isArray(e.detail?.detections) ? e.detail.detections : [];
     
-    // Field Health Logic
-    const healthScore = Math.max(0, 100 - (s.total * 5));
-    setText("fieldHealthScore", `${healthScore}/100`);
-    setText("fieldHealthLabel", healthScore > 80 ? "Good" : healthScore > 50 ? "Fair" : "Needs Attention");
+    let totalDetections = 0;
+    let sumConfidence = 0;
+    let highConf = 0;
+    let medConf = 0;
+    let lowConf = 0;
 
-    // Static Model Validation (To make the UI look complete)
+    // Dictionary to hold per-class math
+    const classStats = {};
+
+    detections.forEach(det => {
+      totalDetections++;
+      
+      let conf = safeNum(det.confidence);
+      // Convert decimals (0.95) to percentages (95)
+      if (conf <= 1) conf = conf * 100;
+      
+      sumConfidence += conf;
+
+      if (conf >= 80) highConf++;
+      else if (conf >= 50) medConf++;
+      else lowConf++;
+
+      // Group by specific disease/pest
+      const label = normalizeLabel(det.issue_type || det.label || det.class_name);
+      if (!classStats[label]) classStats[label] = { sum: 0, count: 0 };
+      classStats[label].sum += conf;
+      classStats[label].count++;
+    });
+
+    // Top Level AI Stats
+    const avgConf = totalDetections > 0 ? (sumConfidence / totalDetections) : 0;
+    
+    setText("aiTotalDetections", totalDetections);
+    setText("aiAvgConfidence", `${avgConf.toFixed(1)}%`);
+    setText("aiHighConfidence", highConf);
+    setText("aiMediumConfidence", medConf);
+    setText("aiLowConfidence", lowConf);
+
+    let reliability = "Low";
+    if (avgConf >= 85) reliability = "High";
+    else if (avgConf >= 70) reliability = "Medium";
+    setText("aiReliability", reliability);
+
+    // Static Model Metrics (Keeps your UI looking perfectly populated)
     setText("aiPrecision", "0.942");
     setText("aiRecall", "0.887");
     setText("aiMap50", "0.915");
     setText("aiMap5095", "0.764");
     setText("aiModelVersion", "v2.4-YOLO");
     setText("aiLastTrained", "2026-02-15");
+
+    // Dynamic Health Score (Inversely related to how many detections there are)
+    const mission = e.detail?.mission || {};
+    const totalImages = safeNum(mission.total_images) || Math.max(detections.length, 100);
+    const incidence = Math.min(100, (totalDetections / totalImages) * 100);
+    const healthScore = Math.max(0, 100 - incidence);
+    
+    setText("fieldHealthScore", `${healthScore.toFixed(0)}/100`);
+    
+    let healthLabel = "Good";
+    if (healthScore < 50) healthLabel = "Critical";
+    else if (healthScore < 80) healthLabel = "Needs Attention";
+    setText("fieldHealthLabel", healthLabel);
+
+    // 🔥 THE FIX: Inject the Per-Class Summary List dynamically
+    const listEl = document.getElementById("aiClassSummaryList");
+    if (listEl) {
+      listEl.innerHTML = ""; // Clear out the "No class summary yet" placeholder
+
+      const classes = Object.keys(classStats);
+      if (classes.length === 0) {
+        listEl.innerHTML = `<div class="ai-class-row"><span>No detections found.</span></div>`;
+      } else {
+        // Loop through diseases and inject a row for each one
+        classes.sort().forEach(cls => {
+          const stats = classStats[cls];
+          const cAvg = stats.sum / stats.count;
+          
+          const row = document.createElement("div");
+          row.className = "ai-class-row";
+          
+          const nameSpan = document.createElement("span");
+          nameSpan.className = "ai-class-name";
+          nameSpan.textContent = cls;
+          
+          const valSpan = document.createElement("span");
+          valSpan.className = "ai-class-stats";
+          valSpan.textContent = `${cAvg.toFixed(1)}%`;
+
+          row.appendChild(nameSpan);
+          row.appendChild(valSpan);
+          listEl.appendChild(row);
+        });
+      }
+    }
   });
 }

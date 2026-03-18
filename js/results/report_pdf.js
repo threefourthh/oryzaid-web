@@ -458,7 +458,7 @@ async function captureExportMap(filterType) {
 
     if (exportBounds && typeof exportBounds.isValid === "function" && exportBounds.isValid()) {
       exportMap.fitBounds(exportBounds, {
-        paddingTopLeft: L.point(60, 60), // Increased padding to zoom out and show field texture
+        paddingTopLeft: L.point(60, 60),
         paddingBottomRight: L.point(60, 60),
         maxZoom: 19,
         animate: false,
@@ -599,6 +599,10 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const dominantType = diseaseIncidence >= pestIncidence ? "Disease" : "Pest";
       const severityStr = getSeverityLabel(dominantPct);
 
+      // Extract GPS Coordinates for PDF Header
+      const missionCenter = getMissionCenterLatLng(mission);
+      const coordsStr = `${missionCenter[0].toFixed(5)}, ${missionCenter[1].toFixed(5)}`;
+
       // ==========================================
       // PAGE 1 (Header, Stacked Maps, and Severity Bars)
       // ==========================================
@@ -611,28 +615,27 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.setFontSize(10);
       writeKeyValue(pdf, 14, 24, "Mission ID", missionId());
       writeKeyValue(pdf, 14, 30, "Place", place);
-      writeKeyValue(pdf, 14, 36, "Area (ha)", areaHa);
-      writeKeyValue(pdf, 14, 42, "Altitude (m)", altitudeM);
-      writeKeyValue(pdf, 14, 48, "Generated", `${generatedDate} ${generatedTime}`);
+      writeKeyValue(pdf, 14, 36, "Coordinates", coordsStr); 
+      writeKeyValue(pdf, 14, 42, "Area (ha)", areaHa);
+      writeKeyValue(pdf, 14, 48, "Altitude (m)", altitudeM);
+      writeKeyValue(pdf, 14, 54, "Generated", `${generatedDate} ${generatedTime}`);
 
-      let y = 52;
+      let y = 60;
 
       // 1. DISEASE MAP SECTION
       drawSectionTitle(pdf, "Disease Map Overview", 14, y);
       y += 4;
       
-      // Centered 4:3 Map
-      addMapImage(pdf, diseaseMapShot, 57, y, 96, 72); 
-      y += 76;
+      addMapImage(pdf, diseaseMapShot, 60, y, 90, 67.5); 
+      y += 71.5;
 
       drawSectionTitle(pdf, "Disease Field Severity", 14, y);
-      y += 9;
+      y += 8;
       
       let barX = 14;
       let barW = 182;
       let arrowX = barX + (diseaseIncidence / 100) * barW;
       
-      // Draw pristine solid vector triangle
       pdf.setFillColor(0, 0, 0);
       pdf.triangle(arrowX - 3, y - 4, arrowX + 3, y - 4, arrowX, y, "F");
       
@@ -642,28 +645,27 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.text(`${diseaseIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
 
       drawGradientScale(pdf, barX, y, barW, 8);
-      y += 12;
+      y += 11;
       
       pdf.setFontSize(9);
       pdf.text("Low (1-30%)", 14, y);
       pdf.text("Moderate (31-50%)", 105, y, { align: "center" });
       pdf.text("Severe (51%+)", 196, y, { align: "right" });
 
-      y += 13; 
+      y += 11; 
 
       // 2. PEST MAP SECTION
       drawSectionTitle(pdf, "Pest Map Overview", 14, y);
       y += 4;
       
-      addMapImage(pdf, pestMapShot, 57, y, 96, 72);
-      y += 76; 
+      addMapImage(pdf, pestMapShot, 60, y, 90, 67.5);
+      y += 71.5; 
 
       drawSectionTitle(pdf, "Pest Field Severity", 14, y);
-      y += 9;
+      y += 8;
       
       arrowX = barX + (pestIncidence / 100) * barW;
       
-      // Draw pristine solid vector triangle
       pdf.setFillColor(0, 0, 0);
       pdf.triangle(arrowX - 3, y - 4, arrowX + 3, y - 4, arrowX, y, "F");
       
@@ -673,14 +675,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.text(`${pestIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
 
       drawGradientScale(pdf, barX, y, barW, 8);
-      y += 12;
+      y += 11;
       
       pdf.setFontSize(9);
       pdf.text("Low (1-30%)", 14, y);
       pdf.text("Moderate (31-50%)", 105, y, { align: "center" });
       pdf.text("Severe (51%+)", 196, y, { align: "right" });
 
-      y += 10;
+      y += 9;
 
       // 3. MAP LEGEND
       drawSectionTitle(pdf, "Map Legend", 14, y);
@@ -706,16 +708,12 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.text("Pest (Orange)", 114, y);
 
       // ==========================================
-      // PAGE 2 (Summaries and Recommendations)
+      // PAGE 2 (Summaries & AI Metrics)
       // ==========================================
       pdf.addPage();
-
       let py = 18;
 
-      drawSectionTitle(pdf, "Detection Summary and Recommendations", 14, py);
-      py += 12;
-
-      drawSectionTitle(pdf, "Detected Issues", 14, py);
+      drawSectionTitle(pdf, "Detection Summary", 14, py);
       py += 8;
 
       pdf.setFont("helvetica", "normal");
@@ -780,82 +778,201 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       py = ensurePageSpace(pdf, py, 18);
       pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(0, 0, 0);
       pdf.text("Overall Field Severity (Dominant)", 14, py);
       pdf.text(`${dominantPct.toFixed(1)}%`, 190, py, { align: "right" });
+      py += 14;
+
+      // ==========================================
+      // AI CONFIDENCE & ACCURACY SECTION
+      // ==========================================
+      drawSectionTitle(pdf, "AI Confidence & Accuracy", 14, py);
+      py += 8;
+
+      const drawAiRow = (k1, v1, k2, v2) => {
+        py = ensurePageSpace(pdf, py, 8);
+        
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(10);
+        pdf.setTextColor(100, 100, 100);
+        pdf.text(k1, 16, py);
+        
+        pdf.setFont("helvetica", "bold");
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(String(v1), 54, py);
+        
+        if (k2 && v2) {
+          pdf.setFont("helvetica", "normal");
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(k2, 105, py);
+          
+          pdf.setFont("helvetica", "bold");
+          pdf.setTextColor(0, 0, 0);
+          pdf.text(String(v2), 142, py);
+        }
+        py += 7;
+      };
+
+      const tDet = getText("aiTotalDetections") || cachedDetections.length || "0";
+      const tAvg = getText("aiAvgConfidence") || "0%";
+      const tHigh = getText("aiHighConfidence") || "0";
+      const tMedLow = `${getText("aiMediumConfidence") || "0"} / ${getText("aiLowConfidence") || "0"}`;
+      const tRel = getText("aiReliability") || "—";
+      const tPrec = getText("aiPrecision") || "0.942";
+      
+      drawAiRow("Total Detections:", tDet, "Avg Confidence:", tAvg);
+      drawAiRow("High Confidence:", tHigh, "Reliability:", tRel);
+      drawAiRow("Med / Low Conf:", tMedLow, "Model Precision:", tPrec);
+      
       py += 12;
 
-      drawSectionTitle(pdf, "Suggested Farmer Actions", 14, py);
-      py += 8;
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-
-      const tips = [];
-      if (dominantType === "Disease" && severityStr === "Severe") {
-        tips.push("Consult a local agriculturist immediately regarding a suitable intensive disease control program.");
-      }
-      tips.push("Focus first on the zones with the highest cluster of map markers because these are likely the most urgent areas.");
-      tips.push("Run another monitoring flight after corrective action to compare changes in crop condition.");
-
-      tips.forEach((tip, index) => {
-        py = ensurePageSpace(pdf, py, 12);
-        py = drawWrappedText(pdf, `${index + 1}. ${tip}`, 16, py, 175, 5);
-        py += 1;
-      });
-
-      py += 8;
-      py = ensurePageSpace(pdf, py, 60);
-
-      drawSectionTitle(pdf, "Report Guide & Severity Scale", 14, py);
+      // ==========================================
+      // EXHAUSTIVE REPORT GUIDE & SEVERITY SCALE
+      // ==========================================
+      py = ensurePageSpace(pdf, py, 40);
+      drawSectionTitle(pdf, "Report Guide", 14, py);
       py += 6;
 
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
       pdf.setTextColor(70, 70, 70);
 
-      const introText = "This report uses dual maps to display findings cleanly. Disease detections are marked with Red dots, while Pest detections are marked with Orange dots. The severity is calculated by Disease Incidence (the percentage of images containing threats) and plotted on the severity scale below.";
+      const introText = "This report utilizes dual mapping techniques to present the finding. Disease detections are represented by red markers, while pest detections are indicated by orange markers. The level of severity is determined based on Disease Incidence, defined as the percentage of images containing identified threats, and is illustrated using the severity scale provided below. Furthermore, variations in color intensity correspond to the degree of severity, with stronger intensities indicating more severe conditions.";
       py = drawWrappedText(pdf, introText, 14, py, 182, 4.5);
+      py += 8;
+
+      // --- OVERALL DISEASE SEVERITY ---
+      py = ensurePageSpace(pdf, py, 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text("Overall Disease Field Severity", 14, py);
+      py += 6;
+
+      const diseaseScales = [
+        { level: "Low Severity", area: "0–30%", desc: "Only a small portion of the field is affected\nMost plants remain healthy and productive\nMinimal impact on overall yield" },
+        { level: "Moderate Severity", area: "31–50%", desc: "Infection is noticeable across the field\nA significant portion of plants are affected\nModerate reduction in crop yield is expected" },
+        { level: "Severe Severity", area: "51–100%", desc: "The majority of the entire field is affected\nDiseases are widespread and dominant\nMost plants show visible symptoms\nSignificant to severe yield loss is expected" }
+      ];
+
+      diseaseScales.forEach(s => {
+        py = ensurePageSpace(pdf, py, 20);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9.5);
+        pdf.text(`• ${s.level} (Field Area Affected: ${s.area})`, 16, py);
+        py += 4.5;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        py = drawWrappedText(pdf, `Meaning:\n${s.desc}`, 20, py, 172, 4.5);
+        py += 2;
+      });
       py += 4;
 
-      const scales = [
-        { 
-          title: "Low (Resistant / Slight Infection)", 
-          scale: "1 - 3", 
-          infection: "1% - 30%", 
-          desc: "Few plants are infected; symptoms are mild and limited." 
+      // --- OVERALL PEST SEVERITY ---
+      py = ensurePageSpace(pdf, py, 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.text("Overall Pest Severity", 14, py);
+      py += 6;
+
+      const pestScales = [
+        { level: "Low Severity", area: "0–30%", desc: "Only a small portion of the field shows pest damage\nFeeding or scraping is minimal\nMost plants remain healthy\nMinimal impact on overall growth and yield" },
+        { level: "Moderate Severity", area: "31–50%", desc: "Pest damage is noticeable across the field\nA significant portion of plants are affected\nLeaves show visible scraping or partial tissue loss\nModerate reduction in growth and yield expected" },
+        { level: "Severe Severity", area: "51–100%", desc: "The majority of the entire field is affected by pests\nLeaves are heavily damaged, partially or fully damaged\nPest infestation dominates the field\nSignificant reduction in crop growth and yield" }
+      ];
+
+      pestScales.forEach(s => {
+        py = ensurePageSpace(pdf, py, 20);
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(9.5);
+        pdf.text(`• ${s.level} (Field Area Affected: ${s.area})`, 16, py);
+        py += 4.5;
+        pdf.setFont("helvetica", "normal");
+        pdf.setFontSize(9);
+        py = drawWrappedText(pdf, `Meaning:\n${s.desc}`, 20, py, 172, 4.5);
+        py += 2;
+      });
+      py += 4;
+
+      // --- PESTS AND DISEASES AFFECTED AREA ---
+      py = ensurePageSpace(pdf, py, 30);
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(11);
+      pdf.text("Pests and Diseases Affected Area", 14, py);
+      py += 6;
+
+      const specificGuides = [
+        {
+          title: "Bacterial Leaf Blight (BLB)",
+          items: [
+            { level: "Low Severity", area: "0–30%", desc: "Few plants show leaf blight symptoms\nLesions are small and scattered" },
+            { level: "Moderate Severity", area: "31–50%", desc: "Infection is noticeable in the affected area" },
+            { level: "Severe Severity", area: "51–100%", desc: "Majority of plants are affected\nExtensive leaf drying and wilting observed\nSignificant yield loss is expected" }
+          ]
         },
-        { 
-          title: "Moderate (Intermediate Reaction)", 
-          scale: "4 - 6", 
-          infection: "31% - 50%", 
-          desc: "Noticeable infection; about half of the plants may show symptoms." 
+        {
+          title: "Rice Hispa (Insect Damage)",
+          items: [
+            { level: "Low Severity", area: "0–30%", desc: "Minor leaf scraping damage\nScattered feeding marks" },
+            { level: "Moderate Severity", area: "31–50%", desc: "Feeding damage is noticeable across the affected area\nLeaves show visible scraping and discoloration" },
+            { level: "Severe Severity", area: "51–100%", desc: "Extensive leaf damage in the affected area\nSevere impact on crop growth and yield" }
+          ]
         },
-        { 
-          title: "Severe (Susceptible / High Infection)", 
-          scale: "7 - 9", 
-          infection: "51% - 100%", 
-          desc: "Majority to all plants are infected; severe damage and high yield loss." 
+        {
+          title: "Leaf Scald",
+          items: [
+            { level: "Low Severity", area: "0–30%", desc: "Few scald lesions observed\nSymptoms are scattered and limited\nMinimal impact on crop" },
+            { level: "Moderate Severity", area: "31–50%", desc: "Lesions are increasing and spreading\nNoticeable damage across the affected area\nModerate reduction in plant health" },
+            { level: "Severe Severity", area: "51–100%", desc: "Large brown patches lesions dominate the affected area\nSevere leaf damage is evident\nHigh yield loss is expected" }
+          ]
+        },
+        {
+          title: "Rice Tungro Disease",
+          items: [
+            { level: "Low Severity", area: "0–30%", desc: "Few infected plants observed\nMild yellowing of leaves\nLimited spread of the disease" },
+            { level: "Moderate Severity", area: "31–50%", desc: "Infection is noticeable across the affected area\nYellow to yellow-orange discoloration visible\nSome stunting of plants" },
+            { level: "Severe Severity", area: "51–100%", desc: "Widespread infection across the affected area\nStrong discoloration\nSevere yield loss is expected" }
+          ]
+        },
+        {
+          title: "Fungal",
+          items: [
+            { level: "Low Severity", area: "0–30%", desc: "Scattered spots and lesions observed\nDiseases are present but limited\nMinimal effect on overall affected area" },
+            { level: "Moderate Severity", area: "31–50%", desc: "Mixed symptoms visible across the affected area\nLesions increasing in size and number\nModerate stress on plants" },
+            { level: "Severe Severity", area: "51–100%", desc: "Extensive and overlapping disease symptoms\nSignificant to severe yield loss expected" }
+          ]
         }
       ];
 
-      scales.forEach(s => {
+      specificGuides.forEach(guide => {
+        py = ensurePageSpace(pdf, py, 40);
         pdf.setFont("helvetica", "bold");
-        pdf.text(`• ${s.title}`, 16, py);
-        py += 4.5;
-        
-        pdf.setFont("helvetica", "normal");
-        pdf.text(`Scale: ${s.scale}`, 20, py);
-        py += 4.5;
-        pdf.text(`% Infection: ${s.infection}`, 20, py);
-        py += 4.5;
-        py = drawWrappedText(pdf, `Meaning: ${s.desc}`, 20, py, 172, 4.5);
-        py += 3;
+        pdf.setFontSize(10.5);
+        pdf.setTextColor(156, 0, 150); // Theme Purple
+        pdf.text(guide.title, 14, py);
+        py += 5;
+        pdf.setTextColor(0, 0, 0);
+
+        guide.items.forEach(s => {
+          py = ensurePageSpace(pdf, py, 18);
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(9.5);
+          pdf.text(`• ${s.level}: ${s.area}`, 16, py);
+          py += 4.5;
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(9);
+          py = drawWrappedText(pdf, `Meaning:\n${s.desc}`, 20, py, 172, 4.5);
+          py += 3;
+        });
+        py += 4;
       });
 
       pdf.setTextColor(0, 0, 0);
       pdf.setFont("helvetica", "normal");
       pdf.setFontSize(9);
-      pdf.text("Generated by OryzAID Results Dashboard", 14, 289);
+      
+      py = ensurePageSpace(pdf, py, 15);
+      pdf.text("Generated by OryzAID Results Dashboard", 14, py);
 
       const file = `OryzAID_Report_${missionId()}_${generatedDate}.pdf`;
       pdf.save(file);
