@@ -88,13 +88,12 @@ export function initAiSummary() {
     else if (avgConf >= 70) reliability = "Medium";
     setText("aiReliability", reliability);
 
-    // Static Model Metrics (Keeps your UI looking perfectly populated)
-    setText("aiPrecision", "0.942");
-    setText("aiRecall", "0.887");
-    setText("aiMap50", "0.915");
-    setText("aiMap5095", "0.764");
+    // Static Model Metrics (Updated to match your actual training charts!)
+    setText("aiPrecision", "0.892");
+    setText("aiRecall", "0.865");
+    setText("aiMap50", "0.904");
     setText("aiModelVersion", "v2.4-YOLO");
-    setText("aiLastTrained", "2026-02-15");
+    setText("aiLastTrained", "2026-03-18");
 
     // Dynamic Health Score (Inversely related to how many detections there are)
     const mission = e.detail?.mission || {};
@@ -109,10 +108,10 @@ export function initAiSummary() {
     else if (healthScore < 80) healthLabel = "Needs Attention";
     setText("fieldHealthLabel", healthLabel);
 
-    // 🔥 THE FIX: Inject the Per-Class Summary List dynamically
+    // Inject the Per-Class Summary List dynamically
     const listEl = document.getElementById("aiClassSummaryList");
     if (listEl) {
-      listEl.innerHTML = ""; // Clear out the "No class summary yet" placeholder
+      listEl.innerHTML = ""; 
 
       const classes = Object.keys(classStats);
       if (classes.length === 0) {
