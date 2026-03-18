@@ -30,7 +30,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
   const diseaseMarkersLayer = L.layerGroup().addTo(map);
   const pestMarkersLayer = L.layerGroup().addTo(map);
 
-  // 🔥 NEW: Toggle State (Radio behavior)
   let currentView = 'disease'; // 'disease' or 'pest'
   let avgDiseaseSeverity = 0;
   let avgPestSeverity = 0;
@@ -43,7 +42,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
     Rice_Hispa: { id: "grasshopper", row: "row_Rice_Hispa" },
   };
 
-  // UI Elements
   const headerDisease = document.getElementById("diseaseHeader");
   const headerPest = document.getElementById("pestHeader");
   const chipDisease = document.getElementById("chipDisease");
@@ -97,8 +95,16 @@ export function initResultsMap({ mapId = "map" } = {}) {
   }
 
   function getIntensity(det) {
+    // If you are still sending area percent, use it for the heatmap glow size
     const area = safeNum(det.affected_area_percent);
     if (area != null) return Math.max(0.6, Math.min(1.0, 0.6 + (area / 100) * 0.4));
+    
+    // Otherwise fallback to confidence to determine how bright the map glows
+    const conf = safeNum(det.confidence);
+    if (conf != null) {
+        const normConf = conf > 1 ? conf / 100 : conf;
+        return Math.max(0.6, Math.min(1.0, 0.6 + (normConf * 0.4)));
+    }
     return 0.8;
   }
 
@@ -110,14 +116,13 @@ export function initResultsMap({ mapId = "map" } = {}) {
     return ["Rice_Hispa"].includes(label);
   }
 
-  // 🔥 NEW: Updates the UI Severity Scale based on active view
   function updateSeverityUI() {
     const arrow = document.getElementById("severityArrow");
     const textObj = document.getElementById("severityValueText");
     const titleObj = document.getElementById("severityTitle");
 
     let val = currentView === 'disease' ? avgDiseaseSeverity : avgPestSeverity;
-    val = Math.max(0, Math.min(100, val)); // Clamp between 0-100
+    val = Math.max(0, Math.min(100, val));
 
     if (arrow) arrow.style.left = `${val}%`;
 
@@ -130,58 +135,55 @@ export function initResultsMap({ mapId = "map" } = {}) {
       textObj.style.color = "var(--muted)";
     } else if (val <= 30) {
       textObj.textContent = `Average: ${val.toFixed(0)}% (Low / Slight)`;
-      textObj.style.color = "#d97706"; // Yellow/Orange
+      textObj.style.color = "#d97706"; 
     } else if (val <= 50) {
       textObj.textContent = `Average: ${val.toFixed(0)}% (Moderate)`;
-      textObj.style.color = "#ea580c"; // Orange
+      textObj.style.color = "#ea580c"; 
     } else {
       textObj.textContent = `Average: ${val.toFixed(0)}% (Severe)`;
-      textObj.style.color = "#dc2626"; // Red
+      textObj.style.color = "#dc2626"; 
     }
   }
 
-  function updatePercentages(detections) {
-    const totals = { Bacterial_Leaf_Blight: 0, Fungal_Spot: 0, Leaf_Scald: 0, Tungro: 0, Rice_Hispa: 0 };
-    const counts = { Bacterial_Leaf_Blight: 0, Fungal_Spot: 0, Leaf_Scald: 0, Tungro: 0, Rice_Hispa: 0 };
+  function updatePercentages(detections, mission) {
+    // 🔥 METHOD 1 MATH: Requires Total Images from the database. 
+    // Fallback to detections.length if missing so your UI doesn't crash during testing.
+    const totalImages = safeNum(mission?.total_images) || Math.max(detections.length, 1);
 
+    const counts = { Bacterial_Leaf_Blight: 0, Fungal_Spot: 0, Leaf_Scald: 0, Tungro: 0, Rice_Hispa: 0 };
+    
+    let diseaseCount = 0;
+    let pestCount = 0;
+
+    // Count how many pictures had each specific issue
     detections.forEach((det) => {
       const key = normalizeLabel(det.issue_type || det.label || det.class_name);
-      if (!(key in totals)) return;
-      const area = safeNum(det.affected_area_percent);
-      if (area != null) { totals[key] += area; counts[key] += 1; } 
-      else { totals[key] += 1; counts[key] += 1; }
+      if (key in counts) counts[key]++;
+
+      if (isDisease(key)) diseaseCount++;
+      else if (isPest(key)) pestCount++;
     });
 
-    let dSum = 0, dCount = 0;
-    let pSum = 0, pCount = 0;
+    // 🔥 METHOD 1 MATH: (Infected Pictures / Total Pictures) * 100
+    avgDiseaseSeverity = (diseaseCount / totalImages) * 100;
+    avgPestSeverity = (pestCount / totalImages) * 100;
 
     Object.keys(percentEls).forEach((key) => {
       const elInfo = percentEls[key];
       const spanEl = document.getElementById(elInfo.id);
       const rowEl = document.getElementById(elInfo.row);
       
-      let value = counts[key] > 0 ? (totals[key] > counts[key] ? totals[key] / counts[key] : totals[key]) : 0;
+      // Calculate individual disease incidence %
+      let value = (counts[key] / totalImages) * 100;
       
       if (spanEl) spanEl.textContent = `${Math.max(0, Math.min(100, value)).toFixed(0)}%`;
 
-      // 🔥 Smart Hiding: Hide the row if detection is 0%
+      // Smart Hiding: Hide the row if detection is 0%
       if (rowEl) {
-        if (value === 0) {
-          rowEl.classList.add("hidden-row");
-        } else {
-          rowEl.classList.remove("hidden-row");
-        }
-      }
-
-      // Calculate Averages for the Severity Bar
-      if (value > 0) {
-        if (isDisease(key)) { dSum += value; dCount++; }
-        if (isPest(key)) { pSum += value; pCount++; }
+        if (value === 0) rowEl.classList.add("hidden-row");
+        else rowEl.classList.remove("hidden-row");
       }
     });
-
-    avgDiseaseSeverity = dCount > 0 ? dSum / dCount : 0;
-    avgPestSeverity = pCount > 0 ? pSum / pCount : 0;
     
     updateSeverityUI();
   }
@@ -196,9 +198,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
     window.fieldBoundaryLayer = null;
   }
 
-  // 🔥 NEW: Applies visibility based on Radio logic (Current View)
   function applyVisibility() {
-    // Map Heatmaps
     if (diseaseHeatLayer) {
       if (currentView === 'disease' && !map.hasLayer(diseaseHeatLayer)) diseaseHeatLayer.addTo(map);
       if (currentView !== 'disease' && map.hasLayer(diseaseHeatLayer)) map.removeLayer(diseaseHeatLayer);
@@ -208,7 +208,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
       if (currentView !== 'pest' && map.hasLayer(pestHeatLayer)) map.removeLayer(pestHeatLayer);
     }
 
-    // Map Chips
     if (chipDisease) {
       chipDisease.textContent = currentView === 'disease' ? "Diseases: ON" : "Diseases: OFF";
       chipDisease.className = currentView === 'disease' ? "layer-chip disease on" : "layer-chip disease off";
@@ -218,7 +217,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
       chipPest.className = currentView === 'pest' ? "layer-chip pest on" : "layer-chip pest off";
     }
 
-    // Panel Highlighting
     if (cardDisease && cardPest) {
       if (currentView === 'disease') {
         cardDisease.classList.replace("inactive-card", "active-card");
@@ -232,7 +230,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
     updateSeverityUI();
   }
 
-  // Set up click listeners for the Radio Toggle feature
   function setupToggles() {
     const switchView = (view) => {
       currentView = view;
@@ -267,7 +264,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   function renderHeatmaps(detections, mission) {
     if (!Array.isArray(detections) || detections.length === 0) {
-      updatePercentages([]);
+      updatePercentages([], mission);
       return;
     }
 
@@ -283,7 +280,7 @@ export function initResultsMap({ mapId = "map" } = {}) {
       else if (isPest(label)) pestPoints.push([latlng[0], latlng[1], intensity]);
     });
 
-    updatePercentages(detections);
+    updatePercentages(detections, mission);
 
     if (diseasePoints.length > 0) {
       diseaseHeatLayer = L.heatLayer(diseasePoints, {
