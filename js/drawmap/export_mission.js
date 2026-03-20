@@ -12,7 +12,6 @@ function makeMissionId() {
   return `mission_${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-// QGC / MAVLink constants
 const MAV_FRAME_GLOBAL = 0;
 const MAV_FRAME_GLOBAL_RELATIVE_ALT = 3;
 
@@ -20,12 +19,8 @@ const MAV_CMD_NAV_WAYPOINT = 16;
 const MAV_CMD_NAV_RETURN_TO_LAUNCH = 20;
 const MAV_CMD_NAV_LAND = 21;
 const MAV_CMD_NAV_TAKEOFF = 22;
-const MAV_CMD_DO_CHANGE_SPEED = 178; // optional (works on many firmwares)
+const MAV_CMD_DO_CHANGE_SPEED = 178;
 
-/**
- * Make a clean {lat, lon} from waypoint object.
- * Accepts lon|lng (because some of your code uses lng).
- */
 function normPoint(wp) {
   const lat = Number(wp.lat);
   const lon = Number(wp.lon ?? wp.lng);
@@ -33,7 +28,6 @@ function normPoint(wp) {
   return { lat, lon };
 }
 
-/** Remove consecutive duplicates (helps avoid "micro jitter" missions) */
 function dedupeConsecutive(points, eps = 1e-7) {
   const out = [];
   for (const p of points) {
@@ -48,22 +42,48 @@ function dedupeConsecutive(points, eps = 1e-7) {
   return out;
 }
 
-/**
- * Build QGC WPL 110 mission:
- * 0) HOME row (like QGC exports)
- * 1) TAKEOFF
- * 2) GOTO first grid point
- * 3) All grid points
- * 4) RTL or LAND
- */
+function computePolygonCenter(latlngs) {
+  if (!Array.isArray(latlngs) || latlngs.length < 3) return null;
+
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+
+  for (const p of latlngs) {
+    const lat = Number(p?.lat);
+    const lng = Number(p?.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+  }
+
+  if (
+    !Number.isFinite(minLat) ||
+    !Number.isFinite(maxLat) ||
+    !Number.isFinite(minLng) ||
+    !Number.isFinite(maxLng)
+  ) {
+    return null;
+  }
+
+  return {
+    lat: (minLat + maxLat) / 2,
+    lng: (minLng + maxLng) / 2,
+  };
+}
+
 function buildQGCWaypointsTextPro({
-  pathPoints,          // [{lat,lon}, ...] sweep order
-  home = null,         // {lat,lon} or null
-  takeoffAlt = 15,     // meters
-  surveyAlt = 12,      // meters
-  endAction = "RTL",   // "RTL" or "LAND"
-  speedMS = null,      // number or null
-  acceptRadiusM = 2,   // param2 for waypoint (meters)
+  pathPoints,
+  home = null,
+  takeoffAlt = 15,
+  surveyAlt = 12,
+  endAction = "RTL",
+  speedMS = null,
+  acceptRadiusM = 2,
 }) {
   if (!Array.isArray(pathPoints) || pathPoints.length < 2) {
     throw new Error("Path is empty/too short. Generate the flight path first.");
@@ -71,8 +91,6 @@ function buildQGCWaypointsTextPro({
 
   const first = pathPoints[0];
   const last = pathPoints[pathPoints.length - 1];
-
-  // If no home given, use first path point as home reference (safe default)
   const homePos = home ?? first;
 
   const lines = ["QGC WPL 110"];
@@ -92,8 +110,6 @@ function buildQGCWaypointsTextPro({
     ].join("\t"));
   };
 
-  // 0) HOME row (QGC-style)
-  // QGC typically writes HOME as cmd=16, frame=0, alt=0, current=1
   push(
     1,
     MAV_FRAME_GLOBAL,
@@ -103,8 +119,6 @@ function buildQGCWaypointsTextPro({
     0
   );
 
-  // Optional: set speed (helps consistent survey). Many firmwares support.
-  // p1: speed type (0=airspeed, 1=groundspeed), p2: speed (m/s), p3: throttle (-1 no change)
   if (Number.isFinite(speedMS) && speedMS > 0) {
     push(
       0,
@@ -116,7 +130,6 @@ function buildQGCWaypointsTextPro({
     );
   }
 
-  // 1) TAKEOFF (relative altitude)
   push(
     0,
     MAV_FRAME_GLOBAL_RELATIVE_ALT,
@@ -126,9 +139,6 @@ function buildQGCWaypointsTextPro({
     takeoffAlt
   );
 
-  // 2) GOTO FIRST GRID POINT
-  // NAV_WAYPOINT params:
-  // p1: hold time (s), p2: acceptance radius (m), p3: pass radius (m), p4: yaw (deg, NaN/0 ok)
   push(
     0,
     MAV_FRAME_GLOBAL_RELATIVE_ALT,
@@ -138,7 +148,6 @@ function buildQGCWaypointsTextPro({
     surveyAlt
   );
 
-  // 3) GRID WAYPOINTS
   for (let i = 1; i < pathPoints.length; i++) {
     const p = pathPoints[i];
     push(
@@ -151,7 +160,6 @@ function buildQGCWaypointsTextPro({
     );
   }
 
-  // 4) END ACTION
   if (endAction === "LAND") {
     push(
       0,
@@ -201,19 +209,40 @@ export function initExportMission(ctx) {
     const missionId = makeMissionId();
     ctx.state.missionId = missionId;
 
-    // Normalize + clean your path points
     const rawPoints = (wps || []).map(normPoint).filter(Boolean);
     const pathPoints = dedupeConsecutive(rawPoints);
 
-    const takeoffAlt = Number(ctx.state.settings?.takeoffAltM ?? 15);
-    const surveyAlt = Number(ctx.state.settings?.altitudeM ?? 12);
+    // 🔥 NEW: Dynamically grab the exact values from your UI dropdowns right before exporting
+    const flightAltInput = document.getElementById("altitudeInput");
+    const takeoffAltInput = document.getElementById("takeoffInput");
 
-    // Optional (if you store home somewhere; if not, it auto-uses first point)
-    const home = ctx.state.homeLatLng
-      ? { lat: Number(ctx.state.homeLatLng.lat), lon: Number(ctx.state.homeLatLng.lng) }
+    const surveyAlt = flightAltInput ? Number(flightAltInput.value) : Number(ctx.state.settings?.altitudeM ?? 12);
+    const takeoffAlt = takeoffAltInput ? Number(takeoffAltInput.value) : Number(ctx.state.settings?.takeoffAltM ?? 15);
+
+    // field center from drawn polygon
+    const fieldCenter =
+      ctx.state.fieldCenter ||
+      computePolygonCenter(ctx.state.polygonLatLngs) ||
+      ctx.state.homeLatLng ||
+      null;
+
+    if (fieldCenter) {
+      ctx.state.fieldCenter = {
+        lat: Number(fieldCenter.lat),
+        lng: Number(fieldCenter.lng),
+      };
+
+      // keep compatibility with old code
+      ctx.state.homeLatLng = {
+        lat: Number(fieldCenter.lat),
+        lng: Number(fieldCenter.lng),
+      };
+    }
+
+    const home = fieldCenter
+      ? { lat: Number(fieldCenter.lat), lon: Number(fieldCenter.lng) }
       : null;
 
-    // Optional speed (m/s). Example: 5 = ~18 kph
     const speedMS = Number(ctx.state.settings?.speedMS ?? 5);
 
     const text = buildQGCWaypointsTextPro({
@@ -221,16 +250,22 @@ export function initExportMission(ctx) {
       home,
       takeoffAlt,
       surveyAlt,
-      endAction: "RTL",      // or "LAND"
-      speedMS,               // set to null if you don't want speed command
-      acceptRadiusM: 2       // tighter = more accurate, but too tight can cause “overshoot” loops
+      endAction: "RTL",
+      speedMS,
+      acceptRadiusM: 2,
     });
+
     downloadText(text, `${missionId}.waypoints`);
 
+    console.log("Exported mission center:", ctx.state.fieldCenter);
+
     setBtnEnabled("monitorBtn", true);
+    
+    // Notification actively displays the exact recorded altitudes
     showCenterNotif?.(
-      "Exported! Import this file into QGroundControl (Plan → Import), then upload mission to Pixhawk.",
-      { okText: "OK" }
+      `Exported!\n\nTakeoff Alt: ${takeoffAlt}m | Flight Alt: ${surveyAlt}m\n\nImport this file into QGroundControl (Plan → Import), then upload mission to Pixhawk.`,
+      { okText: "Awesome" }
     );
+
   });
 }

@@ -5,29 +5,47 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   
-  <!-- Force blank favicon to clear cached tab icons -->
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>" />
+  <!-- This blank base64 favicon actively overwrites the old cached logo in the tab -->
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
   
   <title>OryzAID | Mission Planning</title>
-  <meta name="description" content="OryzAID mission planning dashboard for drawing areas and generating flight paths." />
+  <meta name="description"
+    content="OryzAID mission planning dashboard for drawing areas and generating flight paths." />
 
-  <!-- Fonts: Outfit (Logo) and Inter (UI) -->
+  <!-- Google Fonts: Added Outfit and Inter to match the brand perfectly -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-
-  <!-- Geoman CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css">
-
-  <!-- Page CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.css" />
   <link rel="stylesheet" href="css/drawmap.css" />
+
+  <style>
+    /* =========================================
+       "FOLLOW THE PURPLE" UI FLOW
+       Guides the user step-by-step by lighting up purple
+    ========================================= */
+    
+    /* 1. Highlight the starting inputs slightly to draw the eye */
+    .mission-input {
+      border: 1px solid rgba(156, 0, 150, 0.3) !important;
+    }
+    .mission-input:hover, .mission-input:focus-within {
+      border-color: #9c0096 !important;
+      box-shadow: 0 4px 12px rgba(156, 0, 150, 0.08) !important;
+    }
+
+    /* 2. Keep next steps completely gray until they are unlocked */
+    .mission.action.btn-purple[disabled] {
+      background: #e5e7eb !important;
+      color: #9ca3af !important;
+      box-shadow: none !important;
+    }
+  </style>
 </head>
 
 <body>
-  <!-- Center Notification -->
   <div id="centerNotif" class="center-notif">
     <div class="center-notif-box">
       <span id="centerNotifText">Message here</span>
@@ -35,70 +53,126 @@
     </div>
   </div>
 
-  <!-- TOP BAR -->
   <header class="me-topbar">
-    
-    <!-- OryzAID Text Logo -->
-    <div class="brand" aria-label="OryzAID">
+    <!-- Replaced MaizeEye image with pure text OryzAID logo -->
+    <a href="index.html" class="me-brand" aria-label="Go to home">
       <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
-    </div>
+    </a>
 
     <div class="me-actions">
-
       <div class="mission-display">
         <span class="tag">PLAN</span>
         <span id="planLabel">Creating plan...</span>
       </div>
 
       <button id="backBtn" class="me-btn me-btn-ghost" type="button">Back</button>
-
     </div>
   </header>
 
-  <!-- MAP -->
   <main>
-    <!-- Wrapper that clips nicely without breaking Leaflet controls -->
     <div class="map-shell">
-      <div id="map" role="application" aria-label="OryzAID Map"></div>
-
-      <!-- Small overlay info -->
+      <div id="map" role="application" aria-label="OryzAID map"></div>
       <div id="areaDisplay" aria-live="polite">Area: 0 ha</div>
-
-      <!-- Optional hints -->
       <div id="hintDisplay" class="hint-display" aria-live="polite">
         Draw the field boundary using the map tools.
       </div>
     </div>
   </main>
 
-  <!-- MISSION BAR -->
   <div class="missionbar" aria-label="Mission planning actions">
+    
     <div class="mission status" id="plannerStatus" aria-live="polite">
       <span class="label">STATUS</span>
       <span class="value" data-state="planning">PLANNING</span>
     </div>
 
-    <button type="button" class="mission action" id="generatePathBtn" disabled>
+    <!-- Flight Altitude -->
+    <div class="mission mission-input">
+      <label for="altitudeInput" class="mission-input-label">FLIGHT ALT (M)</label>
+      <select id="altitudeInput" class="me-alt-select">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12" selected>12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15">15</option>
+        <option value="16">16</option>
+        <option value="17">17</option>
+        <option value="18">18</option>
+        <option value="19">19</option>
+        <option value="20">20</option>
+      </select>
+    </div>
+
+    <!-- Takeoff Altitude -->
+    <div class="mission mission-input">
+      <label for="takeoffInput" class="mission-input-label">TAKEOFF ALT (M)</label>
+      <select id="takeoffInput" class="me-alt-select">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+        <option value="5">5</option>
+        <option value="6">6</option>
+        <option value="7">7</option>
+        <option value="8">8</option>
+        <option value="9">9</option>
+        <option value="10">10</option>
+        <option value="11">11</option>
+        <option value="12">12</option>
+        <option value="13">13</option>
+        <option value="14">14</option>
+        <option value="15" selected>15</option>
+        <option value="16">16</option>
+        <option value="17">17</option>
+        <option value="18">18</option>
+        <option value="19">19</option>
+        <option value="20">20</option>
+      </select>
+    </div>
+
+    <!-- Generate Path (Turns Purple First when unlocked) -->
+    <button type="button" class="mission action btn-purple" id="generatePathBtn" disabled>
       <span>GENERATE PATH</span>
     </button>
 
-    <button type="button" class="mission action" id="exportBtn" disabled>
+    <!-- Export (Turns Purple Second when unlocked) -->
+    <button type="button" class="mission action btn-purple" id="exportBtn" disabled>
       <span>EXPORT .WAYPOINTS</span>
     </button>
 
-    <button type="button" class="mission action" id="monitorBtn" disabled>
+    <!-- Monitor (Turns Purple Last when unlocked) -->
+    <button type="button" class="mission action btn-purple" id="monitorBtn" disabled>
       <span>GO TO MONITOR</span>
     </button>
 
-    <!-- Mission Summary -->
-    <div id="missionSummary" class="summary">
-      <div><b>Distance:</b> <span id="sumDistance">—</span></div>
-      <div><b>Time:</b> <span id="sumTime">—</span></div>
-      <div><b>Battery:</b> <span id="sumBattery">—</span></div>
+    <!-- Flight Stats -->
+    <div class="mission-stats">
+      <div class="stat-row">
+        <span class="stat-label">Distance:</span>
+        <span class="stat-value" id="statDistance">0 m</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Time:</span>
+        <span class="stat-value" id="statTime">0.0 min</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Battery:</span>
+        <span class="stat-value" id="statBattery">0 mAh</span>
+      </div>
     </div>
+
   </div>
 
-  <!-- Scripts (ORDER MATTERS) -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@2.14.2/dist/leaflet-geoman.min.js"></script>
   <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>

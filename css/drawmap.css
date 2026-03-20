@@ -3,16 +3,15 @@
    - topbar + map + missionbar
    - no scroll
 ========================= */
-
 :root {
-  --primary-purple: #9c0096;
-  --primary-light: #d94fd3;
-  --primary-cyan: #0ea5e9;
-  
   --bg: #f9fafb;
   --surface: #ffffff;
   --border: #e5e7eb;
-  
+
+  --primary-purple: #9c0096;
+  --primary-light: #d94fd3;
+  --primary-cyan: #0ea5e9;
+
   --text: #111827;
   --muted: #6b7280;
 
@@ -22,12 +21,16 @@
   --radius-lg: 18px;
   --radius-md: 12px;
 
-  --shadow-sm: 0 4px 10px rgba(0,0,0,0.05);
-  --shadow-md: 0 10px 25px rgba(0,0,0,0.08);
+  /* Modernized Shadows */
+  --shadow-sm: 0 4px 10px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 10px 25px rgba(0, 0, 0, 0.08);
+  
+  /* App-wide transition for interactive elements */
+  --transition-app: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* Reset */
-*{ margin:0; padding:0; box-sizing:border-box; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   height: 100%;
@@ -36,75 +39,69 @@ html, body {
 
 body {
   display: grid;
-  grid-template-rows: 64px 1fr auto; /* header, map, missionbar */
+  grid-template-rows: 68px 1fr auto; 
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", "Poppins", system-ui, sans-serif;
-}
-
-/* =========================
-   ORYZAID BRANDING
-========================= */
-.brand {
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-}
-
-.logo-text,
-.aid-gradient {
-  font-family: "Outfit", sans-serif !important;
-  font-weight: 900 !important;
-}
-
-.logo-text {
-  font-size: clamp(22px, 2.5vw, 26px) !important;
-  color: var(--text) !important; 
-  letter-spacing: -0.5px !important;
-}
-
-.aid-gradient {
-  background: linear-gradient(to right, #d900c5 0%, #8b5cf6 50%, #0ea5e9 100%) !important;
-  -webkit-background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
-  background-clip: text !important;
-  -webkit-font-smoothing: antialiased !important;
+  font-family: "Inter", "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased; 
 }
 
 /* =========================
    TOP BAR
 ========================= */
 header.me-topbar {
-  height: 64px;
-  padding: 0 24px;
+  height: 68px;
+  padding: 0 24px; 
   background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
 
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  gap: 16px;
 
   position: relative;
   z-index: 50;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+}
+
+.me-topbar .me-brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.logo-text {
+  font-family: "Outfit", sans-serif;
+  font-weight: 900;
+  font-size: 26px;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+
+.aid-gradient {
+  background: linear-gradient(to right, #d900c5 0%, #8b5cf6 50%, #0ea5e9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  -webkit-font-smoothing: antialiased;
 }
 
 .me-topbar .me-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
 }
 
-/* Mission tag display */
 .mission-display {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   padding: 8px 16px;
-  border-radius: 12px;
-  background: var(--bg);
+  border-radius: 50px;
+  background: var(--surface);
   border: 1px solid var(--border);
   color: var(--text);
   font-weight: 700;
@@ -116,32 +113,32 @@ header.me-topbar {
   font-size: 11px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: rgba(156, 0, 150, 0.1);
+  background: #fdf4ff;
   color: var(--primary-purple);
-  border: 1px solid rgba(156, 0, 150, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
-/* topbar buttons */
 .me-topbar .me-btn {
-  height: 40px;
-  padding: 0 18px;
-  border-radius: 10px;
+  height: 42px;
+  padding: 0 20px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
-
   background: var(--surface);
   color: var(--text);
-  font-weight: 700;
-  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  font-family: inherit;
   cursor: pointer;
-
-  transition: all .2s ease;
+  transition: var(--transition-app);
 }
+
 .me-topbar .me-btn:hover { 
   background: var(--bg);
   border-color: #d1d5db;
 }
-.me-topbar .me-btn:active { 
-  transform: scale(.98); 
+
+.me-topbar .me-btn:active {
+  transform: scale(0.98);
 }
 
 /* =========================
@@ -149,7 +146,7 @@ header.me-topbar {
 ========================= */
 main {
   min-height: 0;
-  padding: 16px;
+  padding: 16px; 
   display: flex;
   flex-direction: column;
 }
@@ -161,8 +158,8 @@ main {
   border-radius: var(--radius-lg);
   overflow: hidden;              
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
-  position: relative;            
+  position: relative !important; 
+  border: 1px solid var(--border); 
 }
 
 #map {
@@ -170,51 +167,80 @@ main {
   width: 100%;
   overflow: visible;
   border-radius: 0;
-  background: #e5e7eb; /* Loader color */
+  box-shadow: none;
   position: relative;
+  background: #e5e7eb; 
 }
 
-/* Overlay text blocks */
+/* OVERLAYS (Hint & Area) */
+#areaDisplay,
+.hint-display,
+#hintDisplay {
+  position: absolute !important;
+  z-index: 2000 !important;
+  pointer-events: none !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  color: var(--text) !important;
+}
+
+.hint-display, #hintDisplay {
+  top: 20px !important;
+  left: 20px !important;
+  padding: 12px 24px !important;
+  border-radius: 999px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  transition: opacity 1.5s ease, visibility 1.5s ease !important;
+}
+
 #areaDisplay {
-  position: absolute;
-  left: 24px;
-  bottom: 24px;
-
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
-
-  padding: 8px 16px;
-  border-radius: 999px;
-
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  font-size: 14px;
-  z-index: 200;
+  left: 20px !important;
+  bottom: 24px !important;
+  padding: 10px 20px !important;
+  border-radius: 999px !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
 }
 
-.hint-display {
-  position: absolute;
-  left: 24px;
-  top: 24px;
+.hint-display.is-hidden, #hintDisplay.is-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
 
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
+/* LEAFLET CONTROLS */
+.map-shell .leaflet-control-container { z-index: 999; }
+.map-shell .leaflet-top.leaflet-left { top: 70px !important; left: 20px !important; }
+.map-shell .leaflet-bar { border: none !important; background: transparent !important; box-shadow: none !important; }
+.map-shell .leaflet-control-zoom a + a { margin-top: 8px !important; }
+.map-shell .leaflet-pm-toolbar .button-container { margin: 0 0 8px 0 !important; }
+.map-shell .leaflet-pm-actions-container { margin-top: 10px !important; }
+.map-shell .leaflet-pm-actions-container .leaflet-pm-action { margin-right: 8px !important; }
 
-  padding: 12px 16px;
-  border-radius: 14px;
+.map-shell .leaflet-control-zoom a,
+.map-shell .leaflet-pm-toolbar .button-container > a {
+  width: 42px !important;
+  height: 42px !important;
+  line-height: 42px !important;
+  margin: 0 0 8px 0 !important;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow: var(--shadow-sm) !important;
+  text-align: center !important;
+  transition: transform 0.2s ease, background 0.2s ease !important;
+}
 
-  font-family: "Inter", sans-serif;
-  font-weight: 600;
-  font-size: 14px;
-  max-width: 340px;
-  line-height: 1.4;
-
-  z-index: 200;
-  pointer-events: none;
+.map-shell .leaflet-control-zoom a:hover,
+.map-shell .leaflet-pm-toolbar .button-container > a:hover {
+  background: #f9fafb !important;
+  transform: translateY(-2px) !important;
 }
 
 /* =========================
@@ -222,11 +248,12 @@ main {
 ========================= */
 .missionbar {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 12px;
-  padding-bottom: 20px;
-  width: min(1200px, calc(100vw - 32px));
+  width: 100%;
+  max-width: 1400px;
+  padding: 0 20px 20px;
   margin: 0 auto;
 }
 
@@ -234,123 +261,211 @@ main {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border);
-  border-radius: 18px;
-
-  height: 72px;
+  border-radius: 16px; 
+  height: 64px;
   padding: 10px 16px;
-
   color: var(--text);
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
+  font-family: inherit;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
 }
 
-.mission.status { width: 220px; }
+.mission.status { 
+  width: 140px; 
+}
 
-/* Main Action Buttons */
+/* Action Buttons */
 .mission.action {
-  width: 220px;
+  width: 165px;
   cursor: pointer;
-  background: var(--primary-purple);
-  color: #fff;
   border: none;
-  transition: transform .15s ease, background-color .15s ease, box-shadow .15s ease;
-}
-
-.mission.action:hover { 
-  background: #7a0076;
-  transform: translateY(-2px); 
-  box-shadow: 0 6px 16px rgba(156, 0, 150, 0.2);
-}
-
-.mission.action:active { transform: translateY(0px) scale(.98); }
-
-.mission.action[disabled] {
-  cursor: not-allowed;
+  transition: var(--transition-app);
+  font-weight: 800; 
+  font-size: 13px;
   background: #e5e7eb;
   color: #9ca3af;
   box-shadow: none;
-  transform: none;
 }
 
+.mission.action:hover:not([disabled]) { 
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.mission.action:active:not([disabled]) { 
+  transform: translateY(0px) scale(0.98); 
+}
+
+.mission.action[disabled] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Purple Button styling (Generate Path) */
+.mission.action.btn-purple {
+  background: var(--primary-purple);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(156, 0, 150, 0.2);
+}
+
+.mission.action.btn-purple:hover:not([disabled]) {
+  background: #7a0076;
+}
+
+.mission.action.btn-purple[disabled] {
+  background: rgba(156, 0, 153, 0.4);
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: none;
+}
+
+/* Status text formatting */
 .mission .label {
-  font-size: 11px;
-  letter-spacing: .1em;
-  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
+  color: var(--muted); 
 }
 
 .mission .value {
   font-size: 13px;
-  letter-spacing: .05em;
-  padding: 6px 14px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 4px 14px;
   border-radius: 999px;
-  border: 1px solid var(--border);
-  background: var(--bg);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 /* Status colors */
-#plannerStatus .value[data-state="planning"] { background: var(--bg); color: var(--text); }
-#plannerStatus .value[data-state="ready"] { background: var(--primary-cyan); color: #fff; border-color: var(--primary-cyan); }
-#plannerStatus .value[data-state="monitoring"] { background: var(--success); color: #fff; border-color: var(--success); }
+#plannerStatus .value[data-state="planning"] { 
+  background: var(--bg); 
+  color: var(--text); 
+  border: 1px solid var(--border);
+}
+#plannerStatus .value[data-state="ready"] { 
+  background: var(--primary-cyan); 
+  color: #ffffff; 
+  border: none;
+}
 
-/* Mission Summary Data */
-.summary {
+/* =========================================
+   ALTITUDE DROPDOWN DESIGN
+========================================= */
+.mission-input {
+  width: 140px; 
+  background: var(--surface);
+  cursor: pointer;
+  transition: var(--transition-app);
+}
+
+.mission-input:hover {
+  border-color: var(--primary-purple); 
+  box-shadow: 0 4px 12px rgba(156, 0, 150, 0.08);
+  transform: translateY(-2px);
+}
+
+.mission-input-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  white-space: nowrap; 
+}
+
+.me-alt-select {
+  width: 100%;
+  text-align: center;
+  text-align-last: center;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0 16px 0 20px; 
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  
+  /* Uses a dark grey arrow for the light theme */
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111827' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 12px;
+}
+
+/* =========================================
+   FLIGHT STATS (RIGHT ALIGNED)
+========================================= */
+.mission-stats {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  font-size: 13px;
   gap: 4px;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0 10px;
+  font-size: 13px;
+  margin-left: auto; /* Pushes stats to the far right */
 }
-.summary b { color: var(--muted); font-weight: 600; display: inline-block; width: 70px; }
-.summary span { color: var(--text); font-weight: 800; }
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stat-label {
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.stat-value {
+  font-weight: 800;
+  color: var(--text);
+  text-align: right;
+  min-width: 55px;
+}
 
 /* =========================
-   Center Notification
+   CENTER NOTIFICATION
 ========================= */
 .center-notif {
   position: fixed;
   inset: 0;
-  background: rgba(17, 24, 39, 0.6);
+  background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
   display: none;
   align-items: center;
   justify-content: center;
   z-index: 2000;
   opacity: 0;
-  transition: opacity .2s ease;
+  transition: opacity 0.25s ease;
 }
-
 .center-notif.show { display: flex; opacity: 1; }
 
 .center-notif-box {
   background: var(--surface);
-  padding: 32px 36px;
-  border-radius: 20px;
-  min-width: 320px;
-  max-width: 420px;
+  padding: 32px 40px;
+  border-radius: 24px;
+  min-width: 340px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.15);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: "Inter", sans-serif;
+  transform: translateY(10px);
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+.center-notif.show .center-notif-box { transform: translateY(0); }
 
 .center-notif-box span {
   display: block;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 24px;
-  white-space: pre-line;
-  line-height: 1.5;
 }
 
 .center-notif-box button {
@@ -359,74 +474,31 @@ main {
   border: none;
   padding: 12px 32px;
   border-radius: 12px;
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: var(--transition-app);
 }
-.center-notif-box button:hover { background: #7a0076; }
+.center-notif-box button:hover { background: #7a0076; transform: translateY(-2px); }
 
-/* Hide old elements if still present */
+/* Hide old elements */
 #toolsBar, .flightbars, #donemobile, #confirmmobile { display: none !important; }
 
 /* =========================
-   Mobile tweaks
+   MOBILE TWEAKS
 ========================= */
-@media (max-width: 900px){
-  body{ grid-template-rows: auto 1fr auto; }
+@media (max-width: 1200px) {
+  .missionbar { flex-wrap: wrap; justify-content: center; }
+  .mission-stats { margin-left: 0; width: 100%; align-items: center; flex-direction: row; gap: 24px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .stat-row { gap: 8px; }
+}
 
-  header.me-topbar{ height: auto; padding: 12px 16px; flex-wrap: wrap; }
-  .me-topbar .me-actions{ width: 100%; justify-content: space-between; flex-wrap: wrap; }
+@media (max-width: 900px) {
+  body { grid-template-rows: auto 1fr auto; }
+  header.me-topbar { height: auto; padding: 14px 16px; flex-wrap: wrap; }
+  .me-topbar .me-actions { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  main { padding: 12px; }
+  .map-shell { border-radius: 16px; }
   
-  main{ padding: 12px; }
-  .map-shell{ border-radius: 16px; }
-
-  .missionbar{ width: calc(100vw - 24px); flex-wrap: wrap; gap: 10px; padding-bottom: 16px; }
-  .mission.status, .mission.action { width: 100%; max-width: 420px; }
-
-  #areaDisplay{ left: 16px; bottom: 16px; }
-  .hint-display{ left: 16px; top: 16px; max-width: calc(100vw - 32px); }
+  .mission.status, .mission.action, .mission-input { width: calc(50% - 6px); }
+  .mission.action { width: 100%; }
 }
-
-/* =========================
-   Leaflet + Geoman UI Cleanup
-========================= */
-.map-shell .leaflet-control-container { z-index: 999; }
-.map-shell .leaflet-bar { border: none !important; background: transparent !important; box-shadow: none !important; }
-.map-shell .leaflet-top { top: 14px; }
-.map-shell .leaflet-left { left: 14px; }
-
-/* Geoman & Zoom Buttons */
-.map-shell .leaflet-control-zoom a,
-.map-shell .leaflet-pm-toolbar .button-container > a {
-  width: 38px !important;
-  height: 38px !important;
-  line-height: 38px !important;
-  margin: 0 0 10px 0 !important;
-  border-radius: 12px !important;
-  background: rgba(255,255,255,0.95) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  box-shadow: var(--shadow-sm) !important;
-}
-
-.map-shell .leaflet-control-zoom a + a { margin-top: 10px !important; }
-.map-shell .leaflet-pm-toolbar .button-container { margin: 0 0 10px 0 !important; }
-
-/* Action Sub-buttons (Finish/Cancel) */
-.map-shell .leaflet-pm-actions-container .leaflet-pm-action {
-  background: rgba(255,255,255,0.95) !important;
-  color: var(--text) !important;
-  border: 1px solid var(--border) !important;
-  border-radius: 10px !important;
-  box-shadow: var(--shadow-sm) !important;
-  font-weight: 700 !important;
-  margin-top: 12px !important;
-  margin-right: 10px !important;
-}
-.map-shell .leaflet-pm-actions-container .leaflet-pm-action:last-child { margin-right: 0 !important; }
-
-/* Placement fixes to avoid overlap */
-.map-shell { position: relative !important; }
-#hintDisplay, #areaDisplay { position: absolute !important; z-index: 1000 !important; }
-.map-shell .leaflet-top.leaflet-left { top: 64px !important; } /* Push controls below hint */
