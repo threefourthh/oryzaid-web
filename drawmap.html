@@ -12,7 +12,7 @@
   <meta name="description"
     content="OryzAID mission planning dashboard for drawing areas and generating flight paths." />
 
-  <!-- Google Fonts: Added Outfit and Inter to match the brand perfectly -->
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@700;800;900&family=Inter:wght@400;500;600;700;800;900&family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet" />
@@ -22,12 +22,7 @@
   <link rel="stylesheet" href="css/drawmap.css" />
 
   <style>
-    /* =========================================
-       "FOLLOW THE PURPLE" UI FLOW
-       Guides the user step-by-step by lighting up purple
-    ========================================= */
-    
-    /* 1. Highlight the starting inputs slightly to draw the eye */
+    /* "FOLLOW THE PURPLE" UI FLOW */
     .mission-input {
       border: 1px solid rgba(156, 0, 150, 0.3) !important;
     }
@@ -35,12 +30,90 @@
       border-color: #9c0096 !important;
       box-shadow: 0 4px 12px rgba(156, 0, 150, 0.08) !important;
     }
-
-    /* 2. Keep next steps completely gray until they are unlocked */
     .mission.action.btn-purple[disabled] {
       background: #e5e7eb !important;
       color: #9ca3af !important;
       box-shadow: none !important;
+    }
+
+    /* =========================================
+       NEW: TOPBAR SEARCH BAR & PIN
+    ========================================= */
+    .topbar-search {
+      display: flex;
+      align-items: center;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      border-radius: 999px;
+      padding: 8px 16px;
+      width: 100%;
+      max-width: 440px;
+      margin: 0 20px;
+      transition: all 0.2s ease;
+    }
+    .topbar-search:focus-within {
+      border-color: #9c0096;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(156, 0, 150, 0.1);
+    }
+    .topbar-search input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      outline: none;
+      font-family: "Inter", sans-serif;
+      font-size: 14px;
+      color: #111827;
+      font-weight: 500;
+      width: 100%;
+      padding-left: 8px;
+    }
+    .topbar-search input::placeholder {
+      color: #9ca3af;
+      font-weight: 400;
+    }
+    .topbar-search button.search-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 8px;
+      transition: transform 0.2s;
+    }
+    .topbar-search button.search-btn:hover {
+      transform: scale(1.15);
+    }
+    
+    .search-divider {
+      width: 1px;
+      height: 24px;
+      background: #d1d5db;
+      margin: 0 8px;
+    }
+    
+    .topbar-search button.pin-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #9c0096;
+      font-weight: 700;
+      font-family: "Inter", sans-serif;
+      font-size: 13px;
+      padding: 6px 12px;
+      white-space: nowrap;
+      border-radius: 999px;
+      transition: all 0.2s ease;
+    }
+    .topbar-search button.pin-btn:hover {
+      background: rgba(156, 0, 150, 0.1);
+    }
+    
+    @media (max-width: 900px) {
+      .topbar-search {
+        order: 3;
+        max-width: 100%;
+        margin: 10px 0 0 0;
+      }
     }
   </style>
 </head>
@@ -54,17 +127,25 @@
   </div>
 
   <header class="me-topbar">
-    <!-- Replaced MaizeEye image with pure text OryzAID logo -->
+    <!-- LEFT: Logo -->
     <a href="index.html" class="me-brand" aria-label="Go to home">
       <span class="logo-text">Oryz<span class="aid-gradient">AID</span></span>
     </a>
 
+    <!-- CENTER: The Search Bar & Pin Button -->
+    <div class="topbar-search">
+      <input type="text" id="mapSearchInput" placeholder="Search for field (e.g. Tuguegarao)..." />
+      <button id="mapSearchBtn" class="search-btn" title="Search">🔍</button>
+      <div class="search-divider"></div>
+      <button id="dropPinBtn" class="pin-btn" title="Drop Takeoff Pin Here">📍 Set Pin</button>
+    </div>
+
+    <!-- RIGHT: Actions -->
     <div class="me-actions">
       <div class="mission-display">
         <span class="tag">PLAN</span>
         <span id="planLabel">Creating plan...</span>
       </div>
-
       <button id="backBtn" class="me-btn me-btn-ghost" type="button">Back</button>
     </div>
   </header>
@@ -80,7 +161,6 @@
   </main>
 
   <div class="missionbar" aria-label="Mission planning actions">
-    
     <div class="mission status" id="plannerStatus" aria-live="polite">
       <span class="label">STATUS</span>
       <span class="value" data-state="planning">PLANNING</span>
@@ -140,17 +220,17 @@
       </select>
     </div>
 
-    <!-- Generate Path (Turns Purple First when unlocked) -->
+    <!-- Generate Path -->
     <button type="button" class="mission action btn-purple" id="generatePathBtn" disabled>
       <span>GENERATE PATH</span>
     </button>
 
-    <!-- Export (Turns Purple Second when unlocked) -->
+    <!-- Export -->
     <button type="button" class="mission action btn-purple" id="exportBtn" disabled>
       <span>EXPORT .WAYPOINTS</span>
     </button>
 
-    <!-- Monitor (Turns Purple Last when unlocked) -->
+    <!-- Monitor -->
     <button type="button" class="mission action btn-purple" id="monitorBtn" disabled>
       <span>GO TO MONITOR</span>
     </button>
@@ -170,7 +250,6 @@
         <span class="stat-value" id="statBattery">0 mAh</span>
       </div>
     </div>
-
   </div>
 
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
@@ -179,6 +258,125 @@
   <script src="https://unpkg.com/proj4@2.9.2/dist/proj4.js"></script>
 
   <script type="module" src="js/drawmap/app.js"></script>
+
+  <!-- =========================================
+       NEW: NATIVE SEARCH & DRAGGABLE PIN SCRIPT
+  ========================================= -->
+  <script>
+    window.addEventListener("load", () => {
+      const searchInput = document.getElementById('mapSearchInput');
+      const searchBtn = document.getElementById('mapSearchBtn');
+      const dropPinBtn = document.getElementById('dropPinBtn');
+      
+      let homeMarker = null;
+
+      // Helper to safely grab the Leaflet map object
+      function getRealMap() {
+        if (window.map && typeof window.map.flyTo === 'function') return window.map;
+        if (window.L && window.L._maps) {
+          const keys = Object.keys(window.L._maps);
+          if (keys.length > 0) return window.L._maps[keys[0]];
+        }
+        return null;
+      }
+
+      // Core function to drop or move the pin
+      function placeOrMovePin(lat, lon, mapObj) {
+        if (!homeMarker) {
+          // Creates a sleek, professional custom SVG pin with a "TAKEOFF" label
+          const pinIcon = L.divIcon({
+            className: 'home-pin-icon',
+            html: `
+              <div style="position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center;">
+                <div style="background: #111827; color: #fff; font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 800; padding: 4px 12px; border-radius: 999px; margin-bottom: -8px; z-index: 2; box-shadow: 0 4px 10px rgba(0,0,0,0.2); letter-spacing: 0.5px; border: 1px solid rgba(255,255,255,0.1);">
+                  TAKEOFF
+                </div>
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0 6px 12px rgba(156,0,150,0.4)); z-index: 1;">
+                  <path d="M12 22C12 22 20 14.5 20 9C20 4.58172 16.4183 1 12 1C7.58172 1 4 4.58172 4 9C4 14.5 12 22 12 22Z" fill="#9c0096" stroke="#ffffff" stroke-width="1.5"/>
+                  <circle cx="12" cy="9" r="3.5" fill="#ffffff"/>
+                </svg>
+              </div>
+            `,
+            iconSize: [0, 0] 
+          });
+          
+          homeMarker = L.marker([lat, lon], { 
+            draggable: true,
+            icon: pinIcon
+          }).addTo(mapObj);
+          
+          homeMarker.bindPopup("<b>Takeoff Point</b><br>Drag this pin to adjust your exact launch spot.").openPopup();
+          
+          // Whenever the user finishes dragging, save the new coordinates
+          homeMarker.on('dragend', function(e) {
+             const pos = e.target.getLatLng();
+             window.takeoffLocation = pos;
+          });
+        } else {
+          homeMarker.setLatLng([lat, lon]);
+          homeMarker.openPopup();
+        }
+        // Save globally so your other scripts can access it later if needed
+        window.takeoffLocation = { lat, lng: lon };
+      }
+
+      // --- ACTION 1: Manual Pin Drop ---
+      dropPinBtn.addEventListener('click', () => {
+        const realMap = getRealMap();
+        if (realMap) {
+          const center = realMap.getCenter();
+          placeOrMovePin(center.lat, center.lng, realMap);
+        } else {
+          alert("Map is not ready yet. Please wait a second.");
+        }
+      });
+
+      // --- ACTION 2: Search Bar Logic ---
+      const performSearch = async () => {
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        searchBtn.innerHTML = '⏳';
+        searchBtn.disabled = true;
+
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+          const data = await res.json();
+
+          if (data && data.length > 0) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            const realMap = getRealMap();
+
+            if (realMap) {
+              // Fly to location
+              realMap.flyTo([lat, lon], 16, { animate: true, duration: 1.5 });
+              // Automatically drop the pin after flying
+              setTimeout(() => {
+                placeOrMovePin(lat, lon, realMap);
+              }, 1600);
+            } else {
+              alert("⚠️ Map connection blocked!\nPlease open 'js/drawmap/app.js' and add 'window.map = map;'");
+            }
+          } else {
+            alert("Location not found. Try adding a city name (e.g. 'Annafunan, Tuguegarao').");
+          }
+        } catch (err) {
+          console.error("Geocoding error:", err);
+          alert("Search failed. Check your internet connection.");
+        } finally {
+          searchBtn.innerHTML = '🔍';
+          searchBtn.disabled = false;
+        }
+      };
+
+      searchBtn.addEventListener('click', performSearch);
+      searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') performSearch();
+      });
+    });
+  </script>
+
 </body>
 
 </html>
