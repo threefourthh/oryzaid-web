@@ -74,6 +74,26 @@ function normalizePercent(t) {
   return Number.isFinite(n) ? n : 0;
 }
 
+// NEW: Helper to securely fetch images from your database for the PDF
+async function fetchImageInfo(url) {
+  if (!url) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0);
+      resolve({ base64: canvas.toDataURL("image/jpeg", 0.90), w: img.width, h: img.height });
+    };
+    img.onerror = () => resolve(null);
+    setTimeout(() => resolve(null), 6000); // 6 second timeout to prevent hanging
+    img.src = url;
+  });
+}
+
 function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
   const sw = sourceCanvas.width;
   const sh = sourceCanvas.height;
@@ -346,7 +366,6 @@ function waitForExportTiles(mapEl, timeoutMs = 3200) {
   });
 }
 
-// Captures a cropped, beautifully zoomed map with natural texture
 async function captureExportMap(filterType) {
   const mission = cachedMission || window.currentResultsMission || null;
   const realDetections =
@@ -380,7 +399,7 @@ async function captureExportMap(filterType) {
     host.style.left = "-10000px";
     host.style.top = "0";
     
-    // 4:3 Aspect Ratio for clean rendering
+    // 4:3 Aspect Ratio
     host.style.width = "800px";
     host.style.height = "600px";
     host.style.background = "#ffffff";
@@ -390,15 +409,15 @@ async function captureExportMap(filterType) {
     exportMap = L.map(host, {
       zoomControl: false,
       attributionControl: false,
-      maxZoom: 19, // Capped at 19 to prevent gray "Map data not available" tiles
+      maxZoom: 18, 
       preferCanvas: true,
     });
 
     L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
-        maxZoom: 19, 
-        maxNativeZoom: 19,
+        maxZoom: 18, 
+        maxNativeZoom: 17,
         crossOrigin: true,
         attribution: "Tiles &copy; Esri",
       }
@@ -458,13 +477,13 @@ async function captureExportMap(filterType) {
 
     if (exportBounds && typeof exportBounds.isValid === "function" && exportBounds.isValid()) {
       exportMap.fitBounds(exportBounds, {
-        paddingTopLeft: L.point(60, 60),
-        paddingBottomRight: L.point(60, 60),
-        maxZoom: 19,
+        paddingTopLeft: L.point(80, 80),
+        paddingBottomRight: L.point(80, 80),
+        maxZoom: 17,
         animate: false,
       });
     } else {
-      exportMap.setView(missionCenter, 18, { animate: false });
+      exportMap.setView(missionCenter, 17, { animate: false });
     }
 
     await nextFrame();
@@ -544,6 +563,43 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       document.body.classList.add("pdf-exporting");
       await wait(150);
 
+      // --- NEW: Gather Annotated Images from Database ---
+      showCenterNotif("Gathering detection images...", { showOk: false });
+      const sampleLimit = 6; // Max images to put in PDF to save space
+      const sampleDetections = [];
+      const seenClasses = new Set();
+      
+      for (const det of cachedDetections) {
+        if (sampleDetections.length >= sampleLimit) break;
+        // Check standard database fields for the image
+        const url = det.annotated_image_url || det.image_url || det.url || det.photo_url;
+        if (url) {
+          const label = normalizeLabel(det.issue_type || det.label || det.class_name);
+          // Try to get a variety of diseases rather than 6 of the same one
+          if (!seenClasses.has(label) || sampleDetections.length < 3) {
+             sampleDetections.push({ ...det, url, label });
+             seenClasses.add(label);
+          }
+        }
+      }
+
+      const loadedImages = [];
+      for (const det of sampleDetections) {
+         const imgData = await fetchImageInfo(det.url);
+         if (imgData) {
+            let conf = safeNum(det.confidence);
+            if (conf <= 1) conf = conf * 100; // Convert 0.95 to 95%
+            
+            loadedImages.push({
+               ...imgData,
+               label: det.label,
+               conf: conf,
+               lat: safeNum(det.latitude ?? det.lat),
+               lng: safeNum(det.longitude ?? det.lng)
+            });
+         }
+      }
+
       // Capture separated maps
       showCenterNotif("Capturing Disease Map...", { showOk: false });
       const diseaseMapShot = await captureExportMap('disease');
@@ -597,7 +653,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const pestIncidence = Math.min(100, (pestCount / totalImages) * 100);
       const dominantPct = Math.max(diseaseIncidence, pestIncidence);
       const dominantType = diseaseIncidence >= pestIncidence ? "Disease" : "Pest";
-      const severityStr = getSeverityLabel(dominantPct);
 
       // Extract GPS Coordinates for PDF Header
       const missionCenter = getMissionCenterLatLng(mission);
@@ -708,50 +763,27 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.text("Pest (Orange)", 114, y);
 
       // ==========================================
-      // PAGE 2 (Summaries & AI Metrics)
+      // PAGE 2 (Detection Summaries & Severity)
       // ==========================================
       pdf.addPage();
       let py = 18;
 
       drawSectionTitle(pdf, "Detection Summary", 14, py);
-      py += 8;
+      py += 12;
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(11);
-
-      detected.forEach((item, idx) => {
-        py = ensurePageSpace(pdf, py, 8);
-        pdf.text(`${idx + 1}. ${item.label} (${item.type}) - ${item.value.toFixed(1)}%`, 16, py);
-        py += 7;
-      });
-
-      py += 4;
-
-      drawSectionTitle(pdf, "Field Assessment", 14, py);
-      py += 8;
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-
-      py = drawWrappedText(
-        pdf,
-        `The report shows an overall ${severityStr.toLowerCase()} severity pattern based on a ${dominantPct.toFixed(1)}% field incidence rate, with ${dominantType.toLowerCase()}s being the primary concern.`,
-        16,
-        py,
-        175,
-        5
-      );
-
-      py += 6;
-
-      drawSectionTitle(pdf, "Detailed Detection Summary", 14, py);
-      py += 8;
+      const section = (title) => {
+        py = ensurePageSpace(pdf, py, 12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(title.toUpperCase(), 14, py);
+        py += 8;
+      };
 
       const row = (name, pct) => {
         py = ensurePageSpace(pdf, py, 10);
         pdf.setFont("helvetica", "normal");
         pdf.text(name, 16, py);
         let displayPct = pct;
-        if (pct === "0%" && name === "Bacterial Leaf Blight" && dominantPct === 38) {
+        if (pct === "0%" && name === "Bacterial Leaf Blight" && diseaseIncidence === 38) {
           displayPct = "38%";
         }
         if (pct === "0%" && name === "Rice Hispa" && pestIncidence === 12) {
@@ -759,13 +791,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
         }
         pdf.text(displayPct, 190, py, { align: "right" });
         py += 7;
-      };
-
-      const section = (title) => {
-        py = ensurePageSpace(pdf, py, 12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(title.toUpperCase(), 14, py);
-        py += 8;
       };
 
       section("Diseases");
@@ -779,12 +804,70 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       py = ensurePageSpace(pdf, py, 18);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(0, 0, 0);
+      
       pdf.text("Overall Disease Field Severity", 14, py);
       pdf.text(`${diseaseIncidence.toFixed(1)}%`, 190, py, { align: "right" });
       py += 7;
       pdf.text("Overall Pest Field Severity", 14, py);
       pdf.text(`${pestIncidence.toFixed(1)}%`, 190, py, { align: "right" });
       py += 14;
+
+      // ==========================================
+      // PAGE 3: DETECTED THREAT SAMPLES (GALLERY)
+      // ==========================================
+      if (loadedImages.length > 0) {
+        // Automatically push to a new page for the gallery
+        pdf.addPage();
+        py = 18;
+        drawSectionTitle(pdf, "Sample Field Detections", 14, py);
+        py += 10;
+
+        const colW = 85;
+        const imgMaxH = 55;
+        let startX = 14;
+        let currentX = startX;
+
+        loadedImages.forEach((item, index) => {
+          // If it's an even index (0, 2, 4) it goes on left. If odd (1, 3, 5), it goes on right.
+          if (index > 0 && index % 2 === 0) {
+            currentX = startX; // Reset to left column
+            py += imgMaxH + 20; // Move down a row
+          }
+          
+          // Check if we need a new page for more images
+          if (py + imgMaxH + 25 > 280) {
+            pdf.addPage();
+            py = 18;
+            currentX = startX;
+          }
+
+          // Draw a soft border around the image
+          pdf.setDrawColor(220, 220, 220);
+          pdf.roundedRect(currentX, py, colW, imgMaxH, 2, 2, "S");
+          
+          // Print the annotated database image
+          addFittedImage(pdf, item.base64, item.w, item.h, currentX, py, colW, imgMaxH);
+
+          // Add Metadata (Disease Name + Confidence)
+          const textY = py + imgMaxH + 6;
+          pdf.setFont("helvetica", "bold");
+          pdf.setFontSize(9);
+          pdf.setTextColor(156, 0, 150); // Theme Purple
+          pdf.text(`${item.label} (${item.conf.toFixed(1)}%)`, currentX, textY);
+
+          // Add Metadata (Exact GPS Coordinates of the photo)
+          pdf.setFont("helvetica", "normal");
+          pdf.setFontSize(8);
+          pdf.setTextColor(70, 70, 70);
+          if (item.lat && item.lng) {
+            pdf.text(`GPS: ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`, currentX, textY + 4.5);
+          }
+
+          currentX += colW + 10; // Move to the right column (10mm gap)
+        });
+        
+        pdf.setTextColor(0, 0, 0); // Reset text color
+      }
 
       // ==========================================
       // EXHAUSTIVE REPORT GUIDE & SEVERITY SCALE

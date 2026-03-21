@@ -265,10 +265,6 @@
   ========================================= -->
   <script>
     // --- THE MASTER FIX: Intercept Data Saves ---
-    // app.js hides its mission state deep in memory. This intercepts ALL saves 
-    // (LocalStorage and Database uploads) and forcefully overwrites the place 
-    // name with the correct one before it reaches the Database/PDF!
-    
     window.currentPlaceName = "";
     window.currentPlanId = "";
 
@@ -363,6 +359,35 @@
             // Save globally for the master interceptor!
             window.currentPlaceName = placeName;
             localStorage.setItem('mission_place_name', placeName);
+            
+            // ===============================================================
+            // THE FIX: FORCE AN IMMEDIATE BACKGROUND SAVE TO DATABASE
+            // ===============================================================
+            const missionKeys = ['maizeeye_plans', 'oryzaid_plans', 'local_plans', 'missions'];
+            missionKeys.forEach(key => {
+              try {
+                let plansStr = localStorage.getItem(key);
+                if (plansStr) {
+                  let plans = JSON.parse(plansStr);
+                  if (Array.isArray(plans)) {
+                    let updated = false;
+                    plans = plans.map(p => {
+                      if (!window.currentPlanId || p.id === window.currentPlanId || p.mission_id === window.currentPlanId) {
+                        p.place = placeName;
+                        p.field_location = placeName;
+                        p.mission_name = placeName;
+                        updated = true;
+                      }
+                      return p;
+                    });
+                    if (updated) {
+                      originalSetItem.call(localStorage, key, JSON.stringify(plans));
+                    }
+                  }
+                }
+              } catch(e) {}
+            });
+            // ===============================================================
             
             // Visually Update the Topbar
             const planLabel = document.getElementById('planLabel');
