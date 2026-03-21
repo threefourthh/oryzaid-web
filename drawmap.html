@@ -37,7 +37,7 @@
     }
 
     /* =========================================
-       NEW: TOPBAR SEARCH BAR & PIN
+       TOPBAR SEARCH BAR & PIN
     ========================================= */
     .topbar-search {
       display: flex;
@@ -260,7 +260,8 @@
   <script type="module" src="js/drawmap/app.js"></script>
 
   <!-- =========================================
-       NEW: NATIVE SEARCH & DRAGGABLE PIN SCRIPT
+       DYNAMIC REVERSE GEOCODING SCRIPT
+       Fixes the incorrect location string in the PDF!
   ========================================= -->
   <script>
     window.addEventListener("load", () => {
@@ -270,7 +271,6 @@
       
       let homeMarker = null;
 
-      // Helper to safely grab the Leaflet map object
       function getRealMap() {
         if (window.map && typeof window.map.flyTo === 'function') return window.map;
         if (window.L && window.L._maps) {
@@ -280,10 +280,50 @@
         return null;
       }
 
-      // Core function to drop or move the pin
+      // 1. DYNAMIC REVERSE GEOCODER
+      // Translates the newly dragged pin coordinates into a real readable city/address name
+      async function updateLocationString(lat, lon) {
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`);
+          const data = await res.json();
+          
+          if (data && data.address) {
+            const addr = data.address;
+            const local = addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || "";
+            const city = addr.town || addr.city || addr.municipality || addr.county || "";
+            
+            let placeName = [local, city].filter(Boolean).join(", ");
+            if (!placeName && data.display_name) {
+                placeName = data.display_name.split(",").slice(0, 2).join(", ");
+            }
+            if (!placeName) placeName = "Unknown Location";
+            
+            // Overwrite into memory so app.js captures the RIGHT name when saving the mission
+            window.currentPlaceName = placeName;
+            localStorage.setItem('mission_place_name', placeName);
+            
+            // Visually Update the Topbar (This proves to you the system recognized the new place!)
+            const planLabel = document.getElementById('planLabel');
+            if (planLabel) {
+                const text = planLabel.innerText;
+                const idMatch = text.match(/(plan_\d+_\d+)/);
+                const areaMatch = text.match(/(\(\d+\.\d+\s*ha\))/);
+                
+                const planId = idMatch ? idMatch[1] : 'Mission';
+                const areaText = areaMatch ? ` ${areaMatch[1]}` : '';
+                
+                // Replace the old text with the dynamically fetched location
+                planLabel.innerText = `${planId} • ${placeName}${areaText}`;
+            }
+          }
+        } catch (err) {
+          console.warn("Reverse geocode failed:", err);
+        }
+      }
+
       function placeOrMovePin(lat, lon, mapObj) {
         if (!homeMarker) {
-          // Creates a sleek, professional custom SVG pin with a "TAKEOFF" label
+          // Custom SVG Pin Design
           const pinIcon = L.divIcon({
             className: 'home-pin-icon',
             html: `
@@ -307,20 +347,21 @@
           
           homeMarker.bindPopup("<b>Takeoff Point</b><br>Drag this pin to adjust your exact launch spot.").openPopup();
           
-          // Whenever the user finishes dragging, save the new coordinates
+          // TRIGGERS REVERSE GEOCODE EVERY TIME YOU DRAG THE PIN
           homeMarker.on('dragend', function(e) {
              const pos = e.target.getLatLng();
              window.takeoffLocation = pos;
+             updateLocationString(pos.lat, pos.lng); // Translates new location
           });
         } else {
           homeMarker.setLatLng([lat, lon]);
           homeMarker.openPopup();
         }
-        // Save globally so your other scripts can access it later if needed
+        
         window.takeoffLocation = { lat, lng: lon };
+        updateLocationString(lat, lon); // Translates initial drop
       }
 
-      // --- ACTION 1: Manual Pin Drop ---
       dropPinBtn.addEventListener('click', () => {
         const realMap = getRealMap();
         if (realMap) {
@@ -331,7 +372,6 @@
         }
       });
 
-      // --- ACTION 2: Search Bar Logic ---
       const performSearch = async () => {
         const query = searchInput.value.trim();
         if (!query) return;
@@ -349,12 +389,8 @@
             const realMap = getRealMap();
 
             if (realMap) {
-              // Fly to location
               realMap.flyTo([lat, lon], 16, { animate: true, duration: 1.5 });
-              // Automatically drop the pin after flying
-              setTimeout(() => {
-                placeOrMovePin(lat, lon, realMap);
-              }, 1600);
+              setTimeout(() => { placeOrMovePin(lat, lon, realMap); }, 1600);
             } else {
               alert("⚠️ Map connection blocked!\nPlease open 'js/drawmap/app.js' and add 'window.map = map;'");
             }
