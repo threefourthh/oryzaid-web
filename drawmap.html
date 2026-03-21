@@ -260,10 +260,73 @@
   <script type="module" src="js/drawmap/app.js"></script>
 
   <!-- =========================================
-       DYNAMIC REVERSE GEOCODING SCRIPT
-       Fixes the incorrect location string in the PDF!
+       DYNAMIC REVERSE GEOCODING & INTERCEPTOR
+       Forces the correct location name to save!
   ========================================= -->
   <script>
+    // --- THE MASTER FIX: Intercept Data Saves ---
+    // app.js hides its mission state deep in memory. This intercepts ALL saves 
+    // (LocalStorage and Database uploads) and forcefully overwrites the place 
+    // name with the correct one before it reaches the Database/PDF!
+    
+    window.currentPlaceName = "";
+    window.currentPlanId = "";
+
+    // Intercept Database API Uploads
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const [resource, config] = args;
+      if (config && config.method === 'POST' && typeof config.body === 'string' && window.currentPlaceName) {
+        try {
+          const bodyObj = JSON.parse(config.body);
+          let modified = false;
+          
+          if (bodyObj.mission) {
+            bodyObj.mission.place = window.currentPlaceName;
+            bodyObj.mission.field_location = window.currentPlaceName;
+            bodyObj.mission.mission_name = window.currentPlaceName;
+            modified = true;
+          } else if (bodyObj.place !== undefined || bodyObj.field_location !== undefined || bodyObj.mission_name !== undefined) {
+            if (bodyObj.place !== undefined) bodyObj.place = window.currentPlaceName;
+            if (bodyObj.field_location !== undefined) bodyObj.field_location = window.currentPlaceName;
+            if (bodyObj.mission_name !== undefined) bodyObj.mission_name = window.currentPlaceName;
+            modified = true;
+          }
+          
+          if (modified) {
+            config.body = JSON.stringify(bodyObj);
+            args[1] = config;
+          }
+        } catch (e) {}
+      }
+      return originalFetch.apply(this, args);
+    };
+
+    // Intercept LocalStorage Saves
+    const originalSetItem = localStorage.setItem;
+    localStorage.setItem = function(key, value) {
+      const missionKeys = ['maizeeye_plans', 'oryzaid_plans', 'local_plans', 'missions'];
+      if (missionKeys.includes(key) && window.currentPlaceName) {
+        try {
+          let plans = JSON.parse(value);
+          if (Array.isArray(plans)) {
+            plans = plans.map(p => {
+              if (!window.currentPlanId || p.id === window.currentPlanId || p.mission_id === window.currentPlanId) {
+                p.place = window.currentPlaceName;
+                p.field_location = window.currentPlaceName;
+                p.mission_name = window.currentPlaceName;
+              }
+              return p;
+            });
+            value = JSON.stringify(plans);
+          }
+        } catch(e) {}
+      }
+      originalSetItem.apply(this, arguments);
+    };
+    // --- END INTERCEPT FIX ---
+
+
     window.addEventListener("load", () => {
       const searchInput = document.getElementById('mapSearchInput');
       const searchBtn = document.getElementById('mapSearchBtn');
@@ -280,7 +343,6 @@
         return null;
       }
 
-      // 1. DYNAMIC REVERSE GEOCODER
       // Translates the newly dragged pin coordinates into a real readable city/address name
       async function updateLocationString(lat, lon) {
         try {
@@ -298,18 +360,19 @@
             }
             if (!placeName) placeName = "Unknown Location";
             
-            // Overwrite into memory so app.js captures the RIGHT name when saving the mission
+            // Save globally for the master interceptor!
             window.currentPlaceName = placeName;
             localStorage.setItem('mission_place_name', placeName);
             
-            // Visually Update the Topbar (This proves to you the system recognized the new place!)
+            // Visually Update the Topbar
             const planLabel = document.getElementById('planLabel');
             if (planLabel) {
                 const text = planLabel.innerText;
                 const idMatch = text.match(/(plan_\d+_\d+)/);
                 const areaMatch = text.match(/(\(\d+\.\d+\s*ha\))/);
                 
-                const planId = idMatch ? idMatch[1] : 'Mission';
+                if (idMatch) window.currentPlanId = idMatch[1];
+                const planId = window.currentPlanId || 'Mission';
                 const areaText = areaMatch ? ` ${areaMatch[1]}` : '';
                 
                 // Replace the old text with the dynamically fetched location
