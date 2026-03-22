@@ -74,7 +74,7 @@ function normalizePercent(t) {
   return Number.isFinite(n) ? n : 0;
 }
 
-// NEW: Helper to securely fetch images from your database for the PDF
+// Fetch images from database for the PDF gallery
 async function fetchImageInfo(url) {
   if (!url) return null;
   return new Promise((resolve) => {
@@ -89,7 +89,7 @@ async function fetchImageInfo(url) {
       resolve({ base64: canvas.toDataURL("image/jpeg", 0.90), w: img.width, h: img.height });
     };
     img.onerror = () => resolve(null);
-    setTimeout(() => resolve(null), 6000); // 6 second timeout to prevent hanging
+    setTimeout(() => resolve(null), 6000); 
     img.src = url;
   });
 }
@@ -399,7 +399,6 @@ async function captureExportMap(filterType) {
     host.style.left = "-10000px";
     host.style.top = "0";
     
-    // 4:3 Aspect Ratio
     host.style.width = "800px";
     host.style.height = "600px";
     host.style.background = "#ffffff";
@@ -409,15 +408,16 @@ async function captureExportMap(filterType) {
     exportMap = L.map(host, {
       zoomControl: false,
       attributionControl: false,
-      maxZoom: 18, 
+      // FIX 2: Set safe Max Zoom limits to prevent gray squares while zooming close
+      maxZoom: 19, 
       preferCanvas: true,
     });
 
     L.tileLayer(
       "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       {
-        maxZoom: 18, 
-        maxNativeZoom: 17,
+        maxZoom: 19, 
+        maxNativeZoom: 18, // Stretches high res tiles gracefully instead of failing
         crossOrigin: true,
         attribution: "Tiles &copy; Esri",
       }
@@ -475,15 +475,15 @@ async function captureExportMap(filterType) {
 
     exportMap.invalidateSize(false);
 
+    // FIX 2: Fit Bounds extremely tight to the field. Padding set to 10px to ensure max closeness!
     if (exportBounds && typeof exportBounds.isValid === "function" && exportBounds.isValid()) {
       exportMap.fitBounds(exportBounds, {
-        paddingTopLeft: L.point(80, 80),
-        paddingBottomRight: L.point(80, 80),
-        maxZoom: 17,
+        padding: [10, 10], 
+        maxZoom: 19,
         animate: false,
       });
     } else {
-      exportMap.setView(missionCenter, 17, { animate: false });
+      exportMap.setView(missionCenter, 18, { animate: false });
     }
 
     await nextFrame();
@@ -563,19 +563,53 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       document.body.classList.add("pdf-exporting");
       await wait(150);
 
-      // --- NEW: Gather Annotated Images from Database ---
+      const mission = cachedMission || window.currentResultsMission || {};
+      const missionCenter = getMissionCenterLatLng(mission);
+
+      // ===============================================================
+      // FIX 1: DYNAMIC REVERSE GEOCODING DIRECTLY IN PDF SCRIPT!
+      // This guarantees the PDF uses the true location regardless of cache.
+      // ===============================================================
+      showCenterNotif("Verifying exact location...", { showOk: false });
+      let finalPlaceName = null;
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${missionCenter[0]}&lon=${missionCenter[1]}`);
+        const data = await res.json();
+        if (data && data.address) {
+          const addr = data.address;
+          const local = addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || "";
+          const city = addr.town || addr.city || addr.municipality || addr.county || "";
+          
+          finalPlaceName = [local, city].filter(Boolean).join(", ");
+          if (!finalPlaceName && data.display_name) {
+              finalPlaceName = data.display_name.split(",").slice(0, 2).join(", ");
+          }
+        }
+      } catch(err) {
+        console.warn("Reverse geocode in PDF failed:", err);
+      }
+
+      // Prioritize the newly fetched dynamic name first!
+      const place = finalPlaceName || getFieldValue(
+        mission.field_location, 
+        mission.place, 
+        mission.mission_name, 
+        getText("fieldLocation"), 
+        getText("metaPlace"), 
+        getParam("place")
+      );
+      // ===============================================================
+
       showCenterNotif("Gathering detection images...", { showOk: false });
-      const sampleLimit = 6; // Max images to put in PDF to save space
+      const sampleLimit = 6; 
       const sampleDetections = [];
       const seenClasses = new Set();
       
       for (const det of cachedDetections) {
         if (sampleDetections.length >= sampleLimit) break;
-        // Check standard database fields for the image
         const url = det.annotated_image_url || det.image_url || det.url || det.photo_url;
         if (url) {
           const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-          // Try to get a variety of diseases rather than 6 of the same one
           if (!seenClasses.has(label) || sampleDetections.length < 3) {
              sampleDetections.push({ ...det, url, label });
              seenClasses.add(label);
@@ -588,7 +622,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
          const imgData = await fetchImageInfo(det.url);
          if (imgData) {
             let conf = safeNum(det.confidence);
-            if (conf <= 1) conf = conf * 100; // Convert 0.95 to 95%
+            if (conf <= 1) conf = conf * 100; 
             
             loadedImages.push({
                ...imgData,
@@ -600,7 +634,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
          }
       }
 
-      // Capture separated maps
       showCenterNotif("Capturing Disease Map...", { showOk: false });
       const diseaseMapShot = await captureExportMap('disease');
       
@@ -612,9 +645,8 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF("p", "mm", "a4");
 
-      const place = getFieldValue(getParam("place"), getText("metaPlace"));
-      const areaHa = getFieldValue(getParam("area_ha"), getText("metaArea"));
-      const altitudeM = getFieldValue(getParam("alt_m"), getText("metaAltitude"));
+      const areaHa = getFieldValue(mission.area_covered_ha, getParam("area_ha"), getText("metaArea"));
+      const altitudeM = getFieldValue(mission.flight_altitude_m, getParam("alt_m"), getText("metaAltitude"));
 
       const generatedDate = todayISO();
       const generatedTime = nowTime();
@@ -631,8 +663,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       ];
 
       const detected = getDetectedIssues(diseases, pests);
-
-      const mission = cachedMission || window.currentResultsMission || {};
       const totalImages = safeNum(mission.total_images) || Math.max(cachedDetections.length, 100);
       
       let diseaseCount = 0;
@@ -651,15 +681,11 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       const diseaseIncidence = Math.min(100, (diseaseCount / totalImages) * 100);
       const pestIncidence = Math.min(100, (pestCount / totalImages) * 100);
-      const dominantPct = Math.max(diseaseIncidence, pestIncidence);
-      const dominantType = diseaseIncidence >= pestIncidence ? "Disease" : "Pest";
 
-      // Extract GPS Coordinates for PDF Header
-      const missionCenter = getMissionCenterLatLng(mission);
       const coordsStr = `${missionCenter[0].toFixed(5)}, ${missionCenter[1].toFixed(5)}`;
 
       // ==========================================
-      // PAGE 1 (Header, Stacked Maps, and Severity Bars)
+      // PAGE 1 
       // ==========================================
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(16);
@@ -763,7 +789,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       pdf.text("Pest (Orange)", 114, y);
 
       // ==========================================
-      // PAGE 2 (Detection Summaries & Severity)
+      // PAGE 2
       // ==========================================
       pdf.addPage();
       let py = 18;
@@ -813,10 +839,9 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       py += 14;
 
       // ==========================================
-      // PAGE 3: DETECTED THREAT SAMPLES (GALLERY)
+      // PAGE 3: DETECTED THREAT SAMPLES
       // ==========================================
       if (loadedImages.length > 0) {
-        // Automatically push to a new page for the gallery
         pdf.addPage();
         py = 18;
         drawSectionTitle(pdf, "Sample Field Detections", 14, py);
@@ -828,34 +853,27 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
         let currentX = startX;
 
         loadedImages.forEach((item, index) => {
-          // If it's an even index (0, 2, 4) it goes on left. If odd (1, 3, 5), it goes on right.
           if (index > 0 && index % 2 === 0) {
-            currentX = startX; // Reset to left column
-            py += imgMaxH + 20; // Move down a row
+            currentX = startX; 
+            py += imgMaxH + 20; 
           }
-          
-          // Check if we need a new page for more images
           if (py + imgMaxH + 25 > 280) {
             pdf.addPage();
             py = 18;
             currentX = startX;
           }
 
-          // Draw a soft border around the image
           pdf.setDrawColor(220, 220, 220);
           pdf.roundedRect(currentX, py, colW, imgMaxH, 2, 2, "S");
           
-          // Print the annotated database image
           addFittedImage(pdf, item.base64, item.w, item.h, currentX, py, colW, imgMaxH);
 
-          // Add Metadata (Disease Name + Confidence)
           const textY = py + imgMaxH + 6;
           pdf.setFont("helvetica", "bold");
           pdf.setFontSize(9);
-          pdf.setTextColor(156, 0, 150); // Theme Purple
+          pdf.setTextColor(156, 0, 150); 
           pdf.text(`${item.label} (${item.conf.toFixed(1)}%)`, currentX, textY);
 
-          // Add Metadata (Exact GPS Coordinates of the photo)
           pdf.setFont("helvetica", "normal");
           pdf.setFontSize(8);
           pdf.setTextColor(70, 70, 70);
@@ -863,14 +881,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
             pdf.text(`GPS: ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`, currentX, textY + 4.5);
           }
 
-          currentX += colW + 10; // Move to the right column (10mm gap)
+          currentX += colW + 10; 
         });
         
-        pdf.setTextColor(0, 0, 0); // Reset text color
+        pdf.setTextColor(0, 0, 0); 
       }
 
       // ==========================================
-      // EXHAUSTIVE REPORT GUIDE & SEVERITY SCALE
+      // EXHAUSTIVE REPORT GUIDE
       // ==========================================
       py = ensurePageSpace(pdf, py, 40);
       drawSectionTitle(pdf, "Report Guide", 14, py);
@@ -884,7 +902,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       py = drawWrappedText(pdf, introText, 14, py, 182, 4.5);
       py += 8;
 
-      // --- OVERALL DISEASE SEVERITY ---
       py = ensurePageSpace(pdf, py, 30);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
@@ -911,7 +928,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       });
       py += 4;
 
-      // --- OVERALL PEST SEVERITY ---
       py = ensurePageSpace(pdf, py, 30);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
@@ -937,7 +953,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       });
       py += 4;
 
-      // --- PESTS AND DISEASES AFFECTED AREA ---
       py = ensurePageSpace(pdf, py, 30);
       pdf.setFont("helvetica", "bold");
       pdf.setFontSize(11);
