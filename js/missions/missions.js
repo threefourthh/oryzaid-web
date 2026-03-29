@@ -1,15 +1,18 @@
 // js/missions/missions.js
-import { apiGet } from "../core/api.js";
-import { showCenterConfirm, showCenterPrompt } from "../drawmap/center_notif.js";
+import { apiGet, apiDelete } from "../core/api.js";
+import { initCenterNotif, showCenterConfirm, showCenterPrompt, showCenterNotif } from "../drawmap/center_notif.js";
 
-const LOCAL_KEY = "maizeeye_local_plans_v1"; // ✅ MUST MATCH local_plans.js
+const LOCAL_KEY = "maizeeye_local_plans_v1";
 
 window.addEventListener("DOMContentLoaded", () => {
+
+  initCenterNotif();
+  
   const localList = document.getElementById("localList");
   const cloudList = document.getElementById("cloudList");
   const newPlanBtn = document.getElementById("newPlanBtn");
 
-  // ✅ New Mission: optional rename prompt (custom modal)
+  // New Mission
   newPlanBtn?.addEventListener("click", () => {
     showCenterPrompt(
       "Optional: Name this mission plan (e.g., Brgy. Caritan Field 1):",
@@ -34,6 +37,7 @@ window.addEventListener("DOMContentLoaded", () => {
   loadLocalPlans(localList);
   loadCloudMissions(cloudList);
   wireLocalActions(localList);
+  wireCloudActions(cloudList);
 });
 
 /* =========================
@@ -220,7 +224,7 @@ async function loadCloudMissions(el) {
           .join(" • ");
 
         return `
-          <div class="item">
+          <div class="item" data-cloud-mission-id="${escapeHTML(id)}">
             <div class="info">
               <b>${escapeHTML(title)}</b><br/>
               <small>${escapeHTML(meta)}</small><br/>
@@ -228,6 +232,7 @@ async function loadCloudMissions(el) {
             </div>
             <div class="actions">
               <a class="btn-link" href="results.html?mission_id=${encodeURIComponent(id)}">View</a>
+              <button class="btn-danger" type="button" data-cloud-act="delete">Delete</button>
             </div>
           </div>
         `;
@@ -236,6 +241,47 @@ async function loadCloudMissions(el) {
   } catch (err) {
     el.innerHTML = `<div class="empty">Failed to load cloud missions: ${escapeHTML(err.message)}</div>`;
   }
+}
+
+function wireCloudActions(container) {
+  if (!container) return;
+
+  container.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-cloud-act]");
+    if (!btn) return;
+
+    const row = btn.closest(".item");
+    const missionId = row?.dataset?.cloudMissionId || "";
+    const act = btn.dataset.cloudAct;
+
+    if (act !== "delete" || !missionId) return;
+
+    showCenterConfirm(
+      `Delete cloud mission ${missionId}? This will also remove its detections.`,
+      {
+        title: "Delete Cloud Mission",
+        okText: "Delete",
+        cancelText: "Cancel",
+        danger: true,
+        onOk: async () => {
+          try {
+            await apiDelete(`/missions/${encodeURIComponent(missionId)}`);
+            showCenterNotif("Cloud mission deleted.", {
+              title: "Deleted",
+              okText: "OK",
+            });
+            await loadCloudMissions(container);
+          } catch (err) {
+            console.error("Delete cloud mission failed:", err);
+            showCenterNotif(err.message || "Failed to delete cloud mission.", {
+              title: "Delete Failed",
+              okText: "OK",
+            });
+          }
+        },
+      }
+    );
+  });
 }
 
 /* =========================

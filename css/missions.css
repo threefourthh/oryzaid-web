@@ -1,314 +1,335 @@
-/* =========================
-   ORYZAID MISSIONS DASHBOARD
-========================= */
+/* css/missions.css */
 :root {
-  --primary-purple: #9c0096;
-  --primary-light: #d94fd3;
-  --primary-green: #059669;
-  --bg-light: #f9fafb;
-  --border: #e5e7eb;
+  --primary: #5b6b21;          /* Olive Green */
+  --primary-hover: #4a5719;    /* Darker Olive */
+  
+  --bg-main: #f4f7f3;          /* Soft beige background */
+  --surface: #ffffff;          /* White cards */
+  --border: #e5e7eb;           /* Soft gray borders */
+  
   --text-main: #111827;
   --text-muted: #6b7280;
-  --card-bg: #ffffff;
 }
 
-body {
+body { 
+  font-family: "Inter", sans-serif; 
+  background: var(--bg-main); 
+  color: var(--text-main); 
+  margin: 0; 
+  padding-bottom: 60px;
+}
+
+* { box-sizing: border-box; }
+
+/* =========================================
+   HEADER
+========================================= */
+.hub-top { 
+  width: 92%;
+  max-width: 1400px;
+  margin: 24px auto 40px auto;
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 12px 24px 12px 32px; 
+  background: rgba(255, 255, 255, 0.95); 
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 50px;
+  border: 1px solid rgba(0,0,0,0.05); 
+  box-shadow: 0 10px 30px rgba(0,0,0,0.06); 
+}
+
+.aid-gradient { 
+  background: linear-gradient(to right, #14b8a6 0%, #f97316 45%, #facc15 100%); 
+  -webkit-background-clip: text; 
+  -webkit-text-fill-color: transparent; 
+  background-clip: text; 
+}
+
+.actions { display: flex; gap: 12px; align-items: center; }
+
+#newPlanBtn { 
+  background: var(--primary); 
+  color: #fff; 
+  border: none; 
+  padding: 10px 24px; 
+  border-radius: 50px; 
+  font-weight: 800; 
+  font-size: 14px;
+  cursor: pointer; 
+  transition: all 0.2s ease; 
+  box-shadow: 0 4px 12px rgba(91, 107, 33, 0.2);
   font-family: "Inter", sans-serif;
-  background-color: var(--bg-light);
-  color: var(--text-main);
-  margin: 0;
+}
+#newPlanBtn:hover { 
+  background: var(--primary-hover); 
+  transform: translateY(-2px); 
 }
 
-/* =========================
-   BRANDING
-========================= */
-.brand {
-  text-decoration: none;
-  display: flex;
-  align-items: center;
-}
-
-.logo-text {
-  font-family: "Outfit", sans-serif;
-  font-size: clamp(22px, 2vw, 26px);
-  font-weight: 900;
-  color: var(--text-main);
-  letter-spacing: -0.5px;
-}
-
-.aid-gradient {
-  background: linear-gradient(to right, var(--primary-purple) 0%, var(--primary-light) 50%, var(--primary-green) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-/* =========================
-   TOP HEADER
-========================= */
-.hub-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
-  background: var(--card-bg);
-  width: min(1200px, calc(100vw - 40px));
-  margin: 24px auto 0;
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(156, 0, 150, 0.08);
+.back { 
+  background: var(--surface);
+  color: var(--text-muted); 
   border: 1px solid var(--border);
-}
-
-.hub-top .actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-/* New mission button */
-#newPlanBtn {
-  background: var(--primary-purple);
-  color: #fff;
-  border: 0;
-  padding: 10px 20px;
-  border-radius: 12px;
-  font-family: "Inter", sans-serif;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 10px rgba(156, 0, 150, 0.2);
-}
-
-#newPlanBtn:hover {
-  background: #7a0076;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(156, 0, 150, 0.3);
-}
-
-#newPlanBtn:active {
-  transform: scale(.98);
-}
-
-/* Back button */
-.back {
-  color: var(--text-muted);
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 700; 
+  font-size: 14px; 
+  padding: 9px 24px;
+  border-radius: 50px;
+  transition: all 0.2s ease; 
+  display: inline-flex;
+  align-items: center;
   font-family: "Inter", sans-serif;
-  padding: 10px 16px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: #fff;
-  transition: all 0.2s ease;
+}
+.back:hover { 
+  background: #f3f4f6; 
+  color: var(--text-main); 
 }
 
-.back:hover {
-  color: var(--text-main);
-  background: var(--bg-light);
-  border-color: #d1d5db;
-}
-
-/* =========================
-   GRID CONTENT & CARDS
-========================= */
-.hub {
-  width: min(1200px, calc(100vw - 40px));
-  margin: 20px auto 30px;
+/* =========================================
+   TWO-COLUMN GRID (.hub & .card)
+========================================= */
+.hub { 
+  width: 92%;
+  max-width: 1400px; 
+  margin: 0 auto; 
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  padding: 0;
+  gap: 32px;
+  align-items: start;
 }
 
 .card {
-  background: var(--card-bg);
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 4px 12px rgba(0,0,0,.03);
+  background: var(--surface);
+  border-radius: 16px;
   border: 1px solid var(--border);
+  padding: 32px;
+  min-height: 500px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
 }
 
 .card-head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 16px;
+  text-align: center;
+  margin-bottom: 32px;
 }
 
 .card-head h2 {
-  margin: 0;
-  font-weight: 800;
   font-size: 20px;
+  font-weight: 900;
+  margin: 0 0 8px 0;
   color: var(--text-main);
 }
 
-.hint {
-  color: var(--text-muted);
+.card-head .hint {
   font-size: 13px;
+  color: var(--text-muted);
+  margin: 0;
+  font-weight: 500;
+  display: block;
 }
 
-.list {
+/* =========================================
+   YOUR JAVASCRIPT CLASSES (.list, .item, .info)
+========================================= */
+.list { display: flex; flex-direction: column; gap: 16px; }
+
+/* The main card wrapper */
+.item {
+  background: #ffffff; 
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-}
-
-/* =========================
-   MISSION ITEMS
-========================= */
-.item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 16px;
-  background: #ffffff;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .item:hover {
+  border-color: var(--primary);
+  box-shadow: 0 8px 24px rgba(91,107,33,0.1);
   transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(156, 0, 150, 0.08);
-  border-color: var(--primary-purple);
 }
 
-.item .info {
+/* Text info area */
+.info {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.8;
+  margin-bottom: 16px;
   flex: 1;
-  min-width: 0;
 }
 
-.item .info b {
+.info b {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-main);
   display: block;
   margin-bottom: 4px;
-  font-size: 16px;
-  color: var(--text-main);
-  font-weight: 700;
-  word-break: break-word;
 }
 
-.item small {
+.info small {
+  font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.5;
-}
-
-.empty {
-  padding: 20px;
-  border-radius: 16px;
-  background: var(--bg-light);
-  color: var(--text-muted);
-  text-align: center;
-  border: 1px dashed #d1d5db;
   font-weight: 500;
 }
 
-/* =========================
-   ITEM BUTTONS
-========================= */
+.muted-id {
+  color: #9ca3af !important;
+  font-size: 11px !important;
+}
+
+/* Tags */
+.sync-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  margin: 0 4px;
+}
+.sync-badge.local { background: #fef08a; color: #9a3412; }
+.sync-badge.synced { background: #d1fae5; color: #047857; }
+
+/* Buttons Row */
 .item .actions {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end; /* Push buttons to the right */
 }
 
-/* Open/View button */
-.btn-link {
+/* Shared Button Styles */
+.btn-link, .btn-ghost, .btn-danger {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  text-decoration: none;
-  font-weight: 700;
-  color: #fff;
-  background: var(--primary-purple);
-  padding: 8px 16px;
-  border-radius: 10px;
-  font-size: 14px;
-  transition: background 0.2s;
-}
-
-.btn-link:hover {
-  background: #7a0076;
-}
-
-/* Rename/Ghost button */
-.btn-ghost {
-  appearance: none;
-  background: #ffffff;
-  border: 1px solid var(--border);
-  color: var(--text-main);
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
   font-family: "Inter", sans-serif;
 }
 
-.btn-ghost:hover {
-  border-color: #d1d5db;
-  background: var(--bg-light);
-}
+.btn-link { background: var(--primary); color: #fff; }
+.btn-link:hover { background: var(--primary-hover); transform: translateY(-1px); }
 
-/* Delete button */
-.btn-danger {
-  appearance: none;
-  background: #ffffff;
-  border: 1px solid rgba(232,17,35,.3);
-  color: #e81123;
-  font-weight: 600;
-  padding: 8px 14px;
-  border-radius: 10px;
-  cursor: pointer;
+.btn-ghost { background: #ffffff; border-color: #d1d5db; color: var(--text-main); }
+.btn-ghost:hover { background: #f3f4f6; }
+
+.btn-danger { background: #ffffff; border-color: #fca5a5; color: #ef4444; }
+.btn-danger:hover { background: #fef2f2; }
+
+/* Empty state */
+.empty {
+  text-align: center;
+  color: var(--text-muted);
   font-size: 14px;
-  transition: all 0.2s;
-  font-family: "Inter", sans-serif;
+  padding: 40px 0;
+  font-weight: 600;
 }
 
-.btn-danger:hover {
-  background: #fef2f2;
-  border-color: #ef4444;
-}
-
-/* =========================
-   RESPONSIVE
-========================= */
-@media(max-width: 900px){
+@media (max-width: 1000px) {
   .hub { grid-template-columns: 1fr; }
-  .hub-top { flex-direction: column; gap: 16px; align-items: flex-start; }
+  .hub-top { flex-direction: column; gap: 16px; border-radius: 20px; padding: 20px; }
+  .item .actions { justify-content: flex-start; flex-wrap: wrap; }
 }
 
-@media(max-width: 520px){
-  .item { flex-direction: column; align-items: flex-start; gap: 14px; }
-  .item .actions { width: 100%; justify-content: flex-start; }
+/* =========================================
+   CENTER NOTIFICATION MODAL
+   (CRITICAL: Hides the invisible wall blocking clicks)
+========================================= */
+.center-notif {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: none; /* CRITICAL FIX: Forces overlay to hide by default */
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-/* =========================
-   CENTER PROMPT / CONFIRM (Unchanged Logic, Updated Colors)
-========================= */
-.cn-overlay { position: fixed; inset: 0; z-index: 99999; background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; padding: 20px; }
-.cn-card { width: min(92vw, 480px); background: #ffffff; color: var(--text-main); border-radius: 20px; box-shadow: 0 20px 50px rgba(0,0,0,.2); padding: 28px 24px; display: flex; flex-direction: column; gap: 16px; border: 1px solid var(--border); }
-.cn-title { margin: 0; font-size: 24px; font-weight: 800; color: var(--text-main); }
-.cn-message { margin: 0; font-size: 15px; line-height: 1.6; color: var(--text-muted); }
-.cn-input { width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-light); color: var(--text-main); padding: 0 16px; font-size: 15px; outline: none; box-sizing: border-box; font-family: "Inter", sans-serif; }
-.cn-input:focus { border-color: var(--primary-purple); box-shadow: 0 0 0 3px rgba(156, 0, 150, 0.15); background: #fff; }
-.cn-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 8px; }
-.cn-btn { min-width: 96px; height: 42px; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; padding: 0 20px; font-family: "Inter", sans-serif; }
-.cn-cancel { background: var(--bg-light); color: var(--text-main); border: 1px solid var(--border); }
-.cn-cancel:hover { background: #e5e7eb; }
-.cn-ok { background: var(--primary-purple); color: #ffffff; }
-.cn-ok:hover { background: #7a0076; }
+.center-notif.show {
+  display: flex;
+  opacity: 1;
+}
 
-.sync-badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1.4; }
-.sync-badge.synced { color: #065f46; background: #d1fae5; border: 1px solid #6ee7b7; }
-.sync-badge.local { color: #92400e; background: #fef3c7; border: 1px solid #fcd34d; }
-.muted-id { opacity: 0.6; font-size: 12px; }
+.center-notif-card {
+  background: var(--surface);
+  padding: 32px 40px;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.15);
+  border: 1px solid var(--border);
+  text-align: left;
+  transform: translateY(10px);
+  transition: transform 0.3s ease;
+}
 
-@media(max-width: 560px){
-  .cn-card { width: min(94vw, 420px); padding: 24px 20px; }
-  .cn-actions { flex-direction: column; }
-  .cn-btn { width: 100%; }
+.center-notif.show .center-notif-card {
+  transform: translateY(0);
+}
+
+.center-notif-text {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 16px;
+}
+
+.center-notif-input {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-bottom: 24px;
+  outline: none;
+  font-family: "Inter", sans-serif;
+}
+
+.center-notif-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(91, 107, 33, 0.1);
+}
+
+.center-notif-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.center-notif-actions button {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid transparent;
+  font-family: "Inter", sans-serif;
+}
+
+#centerNotifCancel {
+  background: var(--surface);
+  border-color: var(--border);
+  color: var(--text-main);
+}
+#centerNotifCancel:hover {
+  background: #f3f4f6;
+}
+
+#centerNotifOk {
+  background: var(--primary);
+  color: #ffffff;
+}
+#centerNotifOk:hover {
+  background: var(--primary-hover);
 }

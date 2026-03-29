@@ -40,7 +40,7 @@ body {
   line-height: 1.6;
 
   /* Put bg image on body instead of html */
-  background-image: url("images/bgfooter.png");
+  background-image: url("../assets/images/bgfooter.png");
   background-repeat: no-repeat;
   background-position: bottom center;
   background-size: cover;

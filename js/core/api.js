@@ -42,3 +42,6 @@ async function request(path, { method = "GET", body } = {}) {
 
 export const apiGet = (path) => request(path);
 export const apiPost = (path, body) => request(path, { method: "POST", body });
+
+// CRITICAL FIX: Added apiDelete so your missions.js file doesn't crash on load
+export const apiDelete = (path) => request(path, { method: "DELETE" });

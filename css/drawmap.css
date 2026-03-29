@@ -4,13 +4,13 @@
    - no scroll
 ========================= */
 :root {
-  --bg: #f9fafb;
+  --bg: #f4f4eb;                  /* New Beige Background */
   --surface: #ffffff;
   --border: #e5e7eb;
 
-  --primary-purple: #9c0096;
-  --primary-light: #d94fd3;
-  --primary-cyan: #0ea5e9;
+  --theme-primary: #5b6b21;       /* Olive Green */
+  --theme-hover: #4a5719;         /* Darker Olive */
+  --primary-cyan: #14b8a6;        /* Teal from the new gradient */
 
   --text: #111827;
   --muted: #6b7280;
@@ -42,7 +42,7 @@ body {
   grid-template-rows: 68px 1fr auto; 
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-family: "Inter", "Poppins", system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased; 
 }
 
@@ -70,6 +70,7 @@ header.me-topbar {
 .me-topbar .me-brand {
   display: flex;
   align-items: center;
+  gap: 12px;
   text-decoration: none;
 }
 
@@ -82,7 +83,7 @@ header.me-topbar {
 }
 
 .aid-gradient {
-  background: linear-gradient(to right, #d900c5 0%, #8b5cf6 50%, #0ea5e9 100%);
+  background: linear-gradient(to right, #14b8a6 0%, #f97316 45%, #facc15 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -101,7 +102,7 @@ header.me-topbar {
   gap: 12px;
   padding: 8px 16px;
   border-radius: 50px;
-  background: var(--surface);
+  background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
   font-weight: 700;
@@ -113,8 +114,8 @@ header.me-topbar {
   font-size: 11px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #fdf4ff;
-  color: var(--primary-purple);
+  background: #e8ede3;
+  color: var(--theme-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -122,7 +123,7 @@ header.me-topbar {
 .me-topbar .me-btn {
   height: 42px;
   padding: 0 20px;
-  border-radius: var(--radius-md);
+  border-radius: 50px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
@@ -304,19 +305,22 @@ main {
   opacity: 0.6;
 }
 
-/* Purple Button styling (Generate Path) */
-.mission.action.btn-purple {
-  background: var(--primary-purple);
+/* Theme Button styling (Generate Path) */
+.mission.action.btn-theme,
+.mission.action.btn-purple /* Keep old class as fallback */ {
+  background: var(--theme-primary);
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(156, 0, 150, 0.2);
+  box-shadow: 0 4px 12px rgba(91, 107, 33, 0.2);
 }
 
+.mission.action.btn-theme:hover:not([disabled]),
 .mission.action.btn-purple:hover:not([disabled]) {
-  background: #7a0076;
+  background: var(--theme-hover);
 }
 
+.mission.action.btn-theme[disabled],
 .mission.action.btn-purple[disabled] {
-  background: rgba(156, 0, 153, 0.4);
+  background: rgba(91, 107, 33, 0.4);
   color: rgba(255, 255, 255, 0.8);
   box-shadow: none;
 }
@@ -362,8 +366,8 @@ main {
 }
 
 .mission-input:hover {
-  border-color: var(--primary-purple); 
-  box-shadow: 0 4px 12px rgba(156, 0, 150, 0.08);
+  border-color: var(--theme-primary); 
+  box-shadow: 0 4px 12px rgba(91, 107, 33, 0.08);
   transform: translateY(-2px);
 }
 
@@ -419,7 +423,7 @@ main {
 }
 
 .stat-label {
-  font-weight: 500;
+  font-weight: 600;
   color: var(--muted);
 }
 
@@ -469,7 +473,7 @@ main {
 }
 
 .center-notif-box button {
-  background: var(--primary-purple);
+  background: var(--theme-primary);
   color: #fff;
   border: none;
   padding: 12px 32px;
@@ -478,7 +482,7 @@ main {
   cursor: pointer;
   transition: var(--transition-app);
 }
-.center-notif-box button:hover { background: #7a0076; transform: translateY(-2px); }
+.center-notif-box button:hover { background: var(--theme-hover); transform: translateY(-2px); }
 
 /* Hide old elements */
 #toolsBar, .flightbars, #donemobile, #confirmmobile { display: none !important; }
