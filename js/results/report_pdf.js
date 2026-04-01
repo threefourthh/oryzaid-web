@@ -20,12 +20,25 @@ function getText(id) {
   return (el.textContent || "").trim();
 }
 
+function missionId() {
+  return (
+    getParam("mission_id") || getParam("mission") || getText("metaMissionId") || "unknown_mission"
+  );
+}
+
 function todayISO() {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
+}
+
+function nowTime() {
+  const d = new Date();
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
 }
 
 function wait(ms) {
@@ -52,7 +65,10 @@ function getFieldValue(...values) {
 function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
   const sw = sourceCanvas.width;
   const sh = sourceCanvas.height;
-  if (!sw || !sh) throw new Error("Source canvas is empty");
+
+  if (!sw || !sh) {
+    throw new Error("Source canvas is empty");
+  }
 
   const cw = Math.max(1, Math.round(sw * cropRatio));
   const ch = Math.max(1, Math.round(sh * cropRatio));
@@ -63,6 +79,7 @@ function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
   const out = document.createElement("canvas");
   out.width = cw;
   out.height = ch;
+
   const ctx = out.getContext("2d");
   ctx.drawImage(sourceCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
 
@@ -74,12 +91,14 @@ function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
 
 async function captureEl(el, label) {
   if (!el) throw new Error(`${label} element not found`);
+
   const canvas = await window.html2canvas(el, {
     scale: 2,
     useCORS: true,
     backgroundColor: "#ffffff",
     logging: false,
   });
+
   return {
     canvas,
     jpegData: canvas.toDataURL("image/jpeg", 0.95),
@@ -88,9 +107,13 @@ async function captureEl(el, label) {
 
 function hideLiveMapUIForCapture() {
   const selectors = [
-    ".leaflet-control-zoom", ".maizeeye-legend", ".leaflet-control-attribution",
-    ".leaflet-popup", ".layer-status-bar",
+    ".leaflet-control-zoom",
+    ".maizeeye-legend",
+    ".leaflet-control-attribution",
+    ".leaflet-popup",
+    ".layer-status-bar",
   ];
+
   const changed = [];
   selectors.forEach((selector) => {
     document.querySelectorAll(selector).forEach((el) => {
@@ -98,8 +121,11 @@ function hideLiveMapUIForCapture() {
       el.style.visibility = "hidden";
     });
   });
+
   return () => {
-    changed.forEach(([el, prev]) => { el.style.visibility = prev; });
+    changed.forEach(([el, prev]) => {
+      el.style.visibility = prev;
+    });
   };
 }
 
@@ -108,7 +134,10 @@ async function waitForLeafletTiles(mapEl, timeoutMs = 2200) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const tiles = Array.from(mapEl.querySelectorAll(".leaflet-tile"));
-    if (!tiles.length) { await wait(100); continue; }
+    if (!tiles.length) {
+      await wait(100);
+      continue;
+    }
     const notReady = tiles.some((img) => !img.complete || img.naturalWidth === 0);
     if (!notReady) return;
     await wait(120);
@@ -118,17 +147,22 @@ async function waitForLeafletTiles(mapEl, timeoutMs = 2200) {
 async function captureVisibleMapFallback() {
   const mapEl = document.getElementById("map");
   if (!mapEl) throw new Error("Map element not found");
+
   const map = window.map;
   const oldScrollX = window.scrollX;
   const oldScrollY = window.scrollY;
   const restoreUI = hideLiveMapUIForCapture();
+
   try {
     mapEl.scrollIntoView({ behavior: "auto", block: "start", inline: "nearest" });
     await nextFrame();
     await wait(250);
+
     if (map && typeof map.invalidateSize === "function") map.invalidateSize(true);
+
     await waitForLeafletTiles(mapEl, 2200);
     await wait(250);
+
     return await captureEl(mapEl, "Map");
   } finally {
     restoreUI();
@@ -144,8 +178,16 @@ function getMissionCenterLatLng(mission) {
 }
 
 function getBoundaryLatLngs(mission) {
-  const raw = mission?.field_boundary || mission?.polygon || mission?.boundary_points || mission?.drawn_polygon || mission?.field_polygon || [];
+  const raw =
+    mission?.field_boundary ||
+    mission?.polygon ||
+    mission?.boundary_points ||
+    mission?.drawn_polygon ||
+    mission?.field_polygon ||
+    [];
+
   if (!Array.isArray(raw) || !raw.length) return [];
+
   return raw.map((p) => {
     if (Array.isArray(p) && p.length >= 2) return [safeNum(p[0]), safeNum(p[1])];
     return [safeNum(p?.lat ?? p?.latitude), safeNum(p?.lng ?? p?.longitude)];
@@ -278,12 +320,14 @@ async function captureExportMap(filterType) {
 // ---------------------------------------------------------
 // CHART GENERATORS
 // ---------------------------------------------------------
-function buildPieSVG(cTungro, cBlb, cFungal, cHispa) {
+function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
+  // Configured unique pastel colors for all 5 diseases
   const data = [
-    { label: "Tungro", val: cTungro, color: "#fef08a" }, // Yellow
-    { label: "Bacterial Leaf Blight", val: cBlb, color: "#bbf7d0" }, // Green
-    { label: "Fungal Spot", val: cFungal, color: "#f5d0fe" }, // Pink
-    { label: "Rice Hispa", val: cHispa, color: "#cffafe" }  // Cyan
+    { label: "Tungro", val: cTungro, color: "#fef08a" },            // Yellow
+    { label: "Bacterial Leaf Blight", val: cBlb, color: "#bbf7d0" },// Green
+    { label: "Fungal Spot", val: cFungal, color: "#fbcfe8" },       // Pink
+    { label: "Leaf Scald", val: cScald, color: "#bfdbfe" },         // Blue
+    { label: "Rice Hispa", val: cHispa, color: "#cffafe" }          // Cyan
   ];
   
   let total = data.reduce((s, d) => s + d.val, 0) || 1;
@@ -308,8 +352,9 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa) {
       const midP = startP + (slice.val / total) / 2;
       const lx = Math.cos(2 * Math.PI * (midP)); 
       const ly = Math.sin(2 * Math.PI * (midP));
-      const left = 125 + (lx * 180); 
-      const top = 125 + (ly * 180);
+      // Tightly bound the labels around the chart
+      const left = 125 + (lx * 160); 
+      const top = 125 + (ly * 160);
       
       labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000;">
           ${slice.label}<br>${slice.val}
@@ -442,9 +487,8 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       const primaryConcern = diseaseIncidence >= pestIncidence ? "diseases" : "pests";
 
-      const pieSvgHtml = buildPieSVG(cTungro, cBlb, cFungal, cHispa);
+      const pieSvgHtml = buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald);
       const barSvgHtml = buildBarChartSVG(diseaseIncidence, pestIncidence);
-      const cScaldIncidence = ((cScald / totalImages) * 100).toFixed(0);
 
       const htmlContent = `
         <style>
@@ -453,16 +497,20 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           .pdf-page { width: 800px; height: 1131px; background: #fff; color: #000; font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
           
           /* Page 1 Styles */
-          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 24px 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }
-          .pdf-details { margin: 40px 0 40px 100px; font-size: 16px; line-height: 2.2; font-weight: 500; }
+          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 16px 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+          .pdf-details { margin: 25px 0 25px 100px; font-size: 15px; line-height: 2.0; font-weight: 500; }
           .pdf-details .row { display: flex; }
           .pdf-details .col1 { width: 180px; }
-          .pdf-section { text-align: center; margin-bottom: 45px; }
-          .pdf-section-title { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
-          .pdf-map-img { width: 500px; height: 260px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
-          .pdf-sev-container { width: 500px; margin: 15px auto 0 auto; text-align: left; }
-          .pdf-sev-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
-          .pdf-severity-bar { width: 100%; height: 40px; background: linear-gradient(to right, #fffbeb, #fcd34d, #ef4444); }
+          .pdf-section { text-align: center; margin-bottom: 35px; }
+          .pdf-section-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
+          .pdf-map-img { width: 480px; height: 230px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
+          
+          .pdf-sev-container { width: 480px; margin: 10px auto 0 auto; text-align: left; }
+          .pdf-sev-title { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
+          .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 15px; }
+          .pdf-severity-arrow { position: absolute; top: -14px; transform: translateX(-50%); font-size: 14px; color: #000; z-index: 2; }
+          .pdf-severity-bar { width: 100%; height: 32px; background: linear-gradient(to right, #fffbeb, #fcd34d, #ef4444); border-radius: 4px; }
+          .pdf-severity-labels { display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; margin-top: 4px; font-weight: 500; }
           
           /* Subsequent Pages */
           .page-title { text-align: center; font-size: 22px; font-weight: 600; margin: 40px 0; }
@@ -494,7 +542,11 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <img class="pdf-map-img" src="${diseaseMapShot.jpegData}" alt="Disease Map" />
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Disease Field Severity</div>
-                  <div class="pdf-severity-bar"></div>
+                  <div class="pdf-severity-bar-wrap">
+                      <div class="pdf-severity-arrow" style="left: ${diseaseIncidence.toFixed(1)}%;">▼</div>
+                      <div class="pdf-severity-bar"></div>
+                  </div>
+                  <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
               </div>
           </div>
           <div class="pdf-section">
@@ -502,7 +554,11 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <img class="pdf-map-img" src="${pestMapShot.jpegData}" alt="Pest Map" />
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Pest Field Severity</div>
-                  <div class="pdf-severity-bar"></div>
+                  <div class="pdf-severity-bar-wrap">
+                      <div class="pdf-severity-arrow" style="left: ${pestIncidence.toFixed(1)}%;">▼</div>
+                      <div class="pdf-severity-bar"></div>
+                  </div>
+                  <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
               </div>
           </div>
         </div>
@@ -514,8 +570,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           <div style="display: flex; justify-content: center; gap: 20px; padding: 0 40px;">
             ${pieSvgHtml}
             <div class="p2-pie-side">
-              The report shows an overall ${severityInterpretation} severity pattern based on a ${overallIncidence.toFixed(1)}% field incidence rate, with ${primaryConcern} being the primary concern.<br><br>
-              Leaf scald = ${cScaldIncidence}%
+              The report shows an overall ${severityInterpretation} severity pattern based on a ${overallIncidence.toFixed(1)}% field incidence rate, with ${primaryConcern} being the primary concern.
             </div>
           </div>
 
