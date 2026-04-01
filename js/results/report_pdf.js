@@ -321,7 +321,7 @@ async function captureExportMap(filterType) {
 // CHART GENERATORS
 // ---------------------------------------------------------
 function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
-  // Configured unique pastel colors for all 5 diseases
+  // Configured unique, distinct pastel colors for all 5 classes
   const data = [
     { label: "Tungro", val: cTungro, color: "#fef08a" },            // Yellow
     { label: "Bacterial Leaf Blight", val: cBlb, color: "#bbf7d0" },// Green
@@ -331,7 +331,7 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
   ];
   
   let total = data.reduce((s, d) => s + d.val, 0) || 1;
-  let svg = `<svg viewBox="-1 -1 2 2" style="width: 250px; height: 250px; transform: rotate(-90deg); overflow: visible;">`;
+  let svg = `<svg viewBox="-1 -1 2 2" style="width: 250px; height: 250px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); overflow: visible;">`;
   let labelsHtml = '';
   let cumulativePercent = 0;
   
@@ -349,21 +349,25 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
       
       svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
 
-      const midP = startP + (slice.val / total) / 2;
-      const lx = Math.cos(2 * Math.PI * (midP)); 
-      const ly = Math.sin(2 * Math.PI * (midP));
-      // Tightly bound the labels around the chart
-      const left = 125 + (lx * 160); 
-      const top = 125 + (ly * 160);
+      // Visual angle correction (-90deg rotation correction for html positioning)
+      const visualMidP = startP + (slice.val / total) / 2 - 0.25; 
+      const lx = Math.cos(2 * Math.PI * visualMidP); 
+      const ly = Math.sin(2 * Math.PI * visualMidP);
       
-      labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000;">
+      // Center of 450x350 container is 225, 175
+      // Radius of 165 pushes labels safely outside the pie chart
+      const left = 225 + (lx * 165); 
+      const top = 175 + (ly * 165);
+      
+      labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000; width: 130px; font-weight: 500;">
           ${slice.label}<br>${slice.val}
       </div>`;
   });
   svg += `</svg>`;
 
+  // Wider container prevents labels from clipping
   return `
-    <div style="position: relative; width: 400px; height: 350px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+    <div style="position: relative; width: 450px; height: 350px; margin-bottom: 20px;">
       ${svg}
       ${labelsHtml}
       <div style="position:absolute; bottom: 0px; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: bold;">In %</div>
@@ -497,19 +501,24 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           .pdf-page { width: 800px; height: 1131px; background: #fff; color: #000; font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
           
           /* Page 1 Styles */
-          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 16px 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
-          .pdf-details { margin: 25px 0 25px 100px; font-size: 15px; line-height: 2.0; font-weight: 500; }
+          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 12px 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+          .pdf-details { margin: 15px 0 15px 100px; font-size: 15px; line-height: 1.8; font-weight: 500; }
           .pdf-details .row { display: flex; }
           .pdf-details .col1 { width: 180px; }
-          .pdf-section { text-align: center; margin-bottom: 35px; }
-          .pdf-section-title { font-size: 18px; font-weight: 600; margin-bottom: 10px; }
-          .pdf-map-img { width: 480px; height: 230px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
+          .pdf-section { text-align: center; margin-bottom: 25px; }
+          .pdf-section-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
+          .pdf-map-img { width: 480px; height: 210px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
           
           .pdf-sev-container { width: 480px; margin: 10px auto 0 auto; text-align: left; }
           .pdf-sev-title { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
-          .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 15px; }
-          .pdf-severity-arrow { position: absolute; top: -14px; transform: translateX(-50%); font-size: 14px; color: #000; z-index: 2; }
-          .pdf-severity-bar { width: 100%; height: 32px; background: linear-gradient(to right, #fffbeb, #fcd34d, #ef4444); border-radius: 4px; }
+          .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 35px; margin-bottom: 5px; }
+          
+          /* Marker completely redesigned to fit nicely using absolute math and safe margin offsets for html2canvas */
+          .pdf-severity-marker { position: absolute; top: -32px; width: 60px; margin-left: -30px; text-align: center; color: #000; z-index: 2; font-weight: 800; }
+          .pdf-severity-marker span { display: block; font-size: 13px; line-height: 1; margin-bottom: 2px; }
+          .pdf-severity-marker .arrow { font-size: 16px; line-height: 1; }
+          
+          .pdf-severity-bar { width: 100%; height: 24px; background: linear-gradient(to right, #fffbeb, #fcd34d, #ef4444); border-radius: 4px; }
           .pdf-severity-labels { display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; margin-top: 4px; font-weight: 500; }
           
           /* Subsequent Pages */
@@ -523,7 +532,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           .pdf-table li { margin-bottom: 4px; }
 
           .p2-text-block { width: calc(100% - 80px); margin: 0 auto 40px; font-size: 16px; line-height: 1.6; text-align: justify; }
-          .p2-pie-side { width: 300px; font-size: 16px; line-height: 1.6; margin-top: 40px;}
+          .p2-pie-side { width: 280px; font-size: 16px; line-height: 1.6; margin-top: 40px;}
         </style>
 
         <!-- PAGE 1 -->
@@ -537,25 +546,33 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="row"><div class="col1">Altitude (m)</div><div>${altitudeM}</div></div>
               <div class="row"><div class="col1">Generated</div><div>${generatedDate}</div></div>
           </div>
+          
           <div class="pdf-section">
               <div class="pdf-section-title">Disease Map Overview</div>
               <img class="pdf-map-img" src="${diseaseMapShot.jpegData}" alt="Disease Map" />
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Disease Field Severity</div>
                   <div class="pdf-severity-bar-wrap">
-                      <div class="pdf-severity-arrow" style="left: ${diseaseIncidence.toFixed(1)}%;">▼</div>
+                      <div class="pdf-severity-marker" style="left: ${diseaseIncidence.toFixed(1)}%;">
+                          <span>${diseaseIncidence.toFixed(1)}%</span>
+                          <div class="arrow">▼</div>
+                      </div>
                       <div class="pdf-severity-bar"></div>
                   </div>
                   <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
               </div>
           </div>
+          
           <div class="pdf-section">
               <div class="pdf-section-title">Pest Map Overview</div>
               <img class="pdf-map-img" src="${pestMapShot.jpegData}" alt="Pest Map" />
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Pest Field Severity</div>
                   <div class="pdf-severity-bar-wrap">
-                      <div class="pdf-severity-arrow" style="left: ${pestIncidence.toFixed(1)}%;">▼</div>
+                      <div class="pdf-severity-marker" style="left: ${pestIncidence.toFixed(1)}%;">
+                          <span>${pestIncidence.toFixed(1)}%</span>
+                          <div class="arrow">▼</div>
+                      </div>
                       <div class="pdf-severity-bar"></div>
                   </div>
                   <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
