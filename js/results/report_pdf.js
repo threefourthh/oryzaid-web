@@ -34,21 +34,6 @@ function todayISO() {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function nowTime() {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
-}
-
-function wait(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-function nextFrame() {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
-}
-
 function safeNum(value, fallback = null) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -60,6 +45,14 @@ function getFieldValue(...values) {
     if (t && t !== "—") return t;
   }
   return "—";
+}
+
+function wait(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function nextFrame() {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
@@ -259,7 +252,6 @@ async function captureExportMap(filterType) {
 
     exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 19, preferCanvas: true });
 
-    // Use Esri World Street Map for the light base
     L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
       maxZoom: 19, maxNativeZoom: 18, crossOrigin: true
     }).addTo(exportMap);
@@ -318,65 +310,71 @@ async function captureExportMap(filterType) {
 }
 
 // ---------------------------------------------------------
-// CHART GENERATORS
+// CHART GENERATORS (PURE SVG - NO HTML OVERLAYS)
 // ---------------------------------------------------------
 function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
-  // Configured unique, distinct pastel colors for all 5 classes
-  const data = [
-    { label: "Tungro", val: cTungro, color: "#fef08a" },            // Yellow
-    { label: "Bacterial Leaf Blight", val: cBlb, color: "#bbf7d0" },// Green
-    { label: "Fungal Spot", val: cFungal, color: "#fbcfe8" },       // Pink
-    { label: "Leaf Scald", val: cScald, color: "#bfdbfe" },         // Blue
-    { label: "Rice Hispa", val: cHispa, color: "#cffafe" }          // Cyan
+  // Unique pastel colors for distinct representation
+  const rawData = [
+    { label: "Tungro", val: cTungro, color: "#fef08a" },
+    { label: "Bact. Leaf Blight", val: cBlb, color: "#bbf7d0" }, // Shortened name for better fit
+    { label: "Fungal Spot", val: cFungal, color: "#fbcfe8" },
+    { label: "Leaf Scald", val: cScald, color: "#bfdbfe" },
+    { label: "Rice Hispa", val: cHispa, color: "#cffafe" }
   ];
   
+  // Filter out any 0 values so they don't break the chart drawing
+  const data = rawData.filter(d => d.val > 0);
   let total = data.reduce((s, d) => s + d.val, 0) || 1;
-  let svg = `<svg viewBox="-1 -1 2 2" style="width: 250px; height: 250px; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg); overflow: visible;">`;
-  let labelsHtml = '';
-  let cumulativePercent = 0;
+  
+  let paths = '';
+  let texts = '';
+  
+  // Start at the top (12 o'clock = -90 degrees = -PI/2)
+  let currentAngle = -Math.PI / 2;
   
   data.forEach(slice => {
-      if(slice.val === 0) return;
-      const startP = cumulativePercent;
-      cumulativePercent += slice.val / total;
-      const endP = cumulativePercent;
+      const sliceAngle = (slice.val / total) * 2 * Math.PI;
+      const endAngle = currentAngle + sliceAngle;
       
-      const startX = Math.cos(2 * Math.PI * startP);
-      const startY = Math.sin(2 * Math.PI * startP);
-      const endX = Math.cos(2 * Math.PI * endP);
-      const endY = Math.sin(2 * Math.PI * endP);
-      const largeArc = (endP - startP) > 0.5 ? 1 : 0;
+      const startX = Math.cos(currentAngle);
+      const startY = Math.sin(currentAngle);
+      const endX = Math.cos(endAngle);
+      const endY = Math.sin(endAngle);
+      const largeArc = sliceAngle > Math.PI ? 1 : 0;
       
-      svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
+      // Draw the pie slice
+      paths += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
 
-      // Visual angle correction (-90deg rotation correction for html positioning)
-      const visualMidP = startP + (slice.val / total) / 2 - 0.25; 
-      const lx = Math.cos(2 * Math.PI * visualMidP); 
-      const ly = Math.sin(2 * Math.PI * visualMidP);
+      // Calculate label position (pushed out to radius 1.55 for clearance)
+      const midAngle = currentAngle + sliceAngle / 2;
+      const tx = Math.cos(midAngle) * 1.55; 
+      const ty = Math.sin(midAngle) * 1.55;
       
-      // Center of 450x350 container is 225, 175
-      // Radius of 165 pushes labels safely outside the pie chart
-      const left = 225 + (lx * 165); 
-      const top = 175 + (ly * 165);
+      // Smart text anchoring depending on which side of the chart it falls
+      const anchor = tx > 0 ? "start" : "end";
       
-      labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000; width: 130px; font-weight: 500;">
-          ${slice.label}<br>${slice.val}
-      </div>`;
+      // Text is embedded directly IN the SVG to guarantee it NEVER gets cut off by HTML scaling
+      texts += `
+        <text x="${tx}" y="${ty - 0.12}" font-family="Inter, sans-serif" font-size="0.22" font-weight="500" fill="#000" text-anchor="${anchor}" alignment-baseline="middle">${slice.label}</text>
+        <text x="${tx}" y="${ty + 0.18}" font-family="Inter, sans-serif" font-size="0.22" font-weight="500" fill="#000" text-anchor="${anchor}" alignment-baseline="middle">${slice.val}</text>
+      `;
+      
+      currentAngle = endAngle;
   });
-  svg += `</svg>`;
 
-  // Wider container prevents labels from clipping
   return `
-    <div style="position: relative; width: 450px; height: 350px; margin-bottom: 20px;">
-      ${svg}
-      ${labelsHtml}
+    <div style="position: relative; width: 380px; height: 350px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+      <!-- Enlarged viewBox gives absolute guarantee labels won't cut off -->
+      <svg viewBox="-2.6 -2.6 5.2 5.2" style="width: 100%; height: 100%; overflow: visible;">
+        ${paths}
+        ${texts}
+      </svg>
       <div style="position:absolute; bottom: 0px; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: bold;">In %</div>
     </div>
   `;
 }
 
 function buildBarChartSVG(diseaseIncidence, pestIncidence) {
-  // Dynamic scaling based on max value
   const maxVal = Math.max(40, Math.ceil(Math.max(diseaseIncidence, pestIncidence) / 10) * 10);
   const hD = (diseaseIncidence / maxVal) * 200; 
   const hP = (pestIncidence / maxVal) * 200;
@@ -384,7 +382,6 @@ function buildBarChartSVG(diseaseIncidence, pestIncidence) {
   return `
   <div style="position: relative; width: 450px; height: 280px; margin: 0 auto; font-family: 'Inter', sans-serif;">
       
-      <!-- Legends -->
       <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; padding-left: 100px; font-size: 14px;">
         <div style="display: flex; align-items: center; gap: 8px;">
           <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff3b30;"></div>
@@ -397,7 +394,6 @@ function buildBarChartSVG(diseaseIncidence, pestIncidence) {
       </div>
 
       <div style="position: relative; height: 200px;">
-        <!-- Grid Lines & Y-Axis Labels -->
         <div style="position: absolute; bottom: 0; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
         <div style="position: absolute; bottom: 50px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
         <div style="position: absolute; bottom: 100px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
@@ -410,12 +406,10 @@ function buildBarChartSVG(diseaseIncidence, pestIncidence) {
         <div style="position: absolute; bottom: 142px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal * 0.75)}</div>
         <div style="position: absolute; bottom: 192px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal)}</div>
         
-        <!-- Bars -->
         <div style="position: absolute; bottom: 1px; left: 70px; width: 140px; height: ${hD}px; background: #ff3b30; border-radius: 12px 12px 0 0; display: flex; justify-content: center; color: white; font-weight: normal; font-size: 14px; padding-top: 8px; box-sizing: border-box;">${diseaseIncidence.toFixed(0)}</div>
         <div style="position: absolute; bottom: 1px; left: 250px; width: 140px; height: ${hP}px; background: #fb923c; border-radius: 12px 12px 0 0; display: flex; justify-content: center; color: #000; font-weight: normal; font-size: 14px; padding-top: 8px; box-sizing: border-box;">${pestIncidence.toFixed(0)}</div>
       </div>
 
-      <!-- Bottom Label -->
       <div style="position: absolute; bottom: -40px; width: 100%; text-align: center; font-size: 16px; padding-left: 30px; font-weight: bold;">In %</div>
   </div>
   `;
@@ -441,7 +435,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const mission = cachedMission || window.currentResultsMission || {};
       const missionCenter = getMissionCenterLatLng(mission);
 
-      // Reverse geocode
       showCenterNotif("Verifying exact location...", { showOk: false });
       let finalPlaceName = null;
       try {
@@ -466,7 +459,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const altitudeM = getFieldValue(mission.flight_altitude_m, getText("metaAltitude"));
       const generatedDate = todayISO();
 
-      // Dynamic Math from Database
       let cTungro = 0, cBlb = 0, cFungal = 0, cHispa = 0, cScald = 0;
       cachedDetections.forEach(det => {
         const lbl = normalizeLabel(det.issue_type || det.label || det.class_name);
@@ -493,6 +485,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       const pieSvgHtml = buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald);
       const barSvgHtml = buildBarChartSVG(diseaseIncidence, pestIncidence);
+      const scaldIncidenceDisplay = ((cScald / totalImages) * 100).toFixed(0);
 
       const htmlContent = `
         <style>
@@ -500,23 +493,25 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           * { box-sizing: border-box; }
           .pdf-page { width: 800px; height: 1131px; background: #fff; color: #000; font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
           
-          /* Page 1 Styles */
-          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 12px 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
-          .pdf-details { margin: 15px 0 15px 100px; font-size: 15px; line-height: 1.8; font-weight: 500; }
+          /* Much smaller, tighter header for Page 1 */
+          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 12px 0; font-size: 22px; font-weight: 600; letter-spacing: 0.5px; }
+          
+          /* Tightened margins to easily fit the severity bars on the first page */
+          .pdf-details { margin: 20px 0 20px 80px; font-size: 15px; line-height: 1.8; font-weight: 500; }
           .pdf-details .row { display: flex; }
           .pdf-details .col1 { width: 180px; }
           .pdf-section { text-align: center; margin-bottom: 25px; }
           .pdf-section-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
           .pdf-map-img { width: 480px; height: 210px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
           
-          .pdf-sev-container { width: 480px; margin: 10px auto 0 auto; text-align: left; }
-          .pdf-sev-title { font-size: 15px; font-weight: 500; margin-bottom: 8px; }
-          .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 35px; margin-bottom: 5px; }
+          .pdf-sev-container { width: 480px; margin: 5px auto 0 auto; text-align: left; }
+          .pdf-sev-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; }
+          .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 25px; }
           
-          /* Marker completely redesigned to fit nicely using absolute math and safe margin offsets for html2canvas */
-          .pdf-severity-marker { position: absolute; top: -32px; width: 60px; margin-left: -30px; text-align: center; color: #000; z-index: 2; font-weight: 800; }
-          .pdf-severity-marker span { display: block; font-size: 13px; line-height: 1; margin-bottom: 2px; }
-          .pdf-severity-marker .arrow { font-size: 16px; line-height: 1; }
+          /* Explicit Absolute positioning for perfect html2canvas arrow rendering */
+          .pdf-severity-marker { position: absolute; top: -26px; width: 40px; text-align: center; color: #000; z-index: 2; font-weight: 800; }
+          .pdf-severity-marker span { display: block; font-size: 13px; line-height: 1; }
+          .pdf-severity-marker .arrow { font-size: 14px; line-height: 1; margin-top: 2px; }
           
           .pdf-severity-bar { width: 100%; height: 24px; background: linear-gradient(to right, #fffbeb, #fcd34d, #ef4444); border-radius: 4px; }
           .pdf-severity-labels { display: flex; justify-content: space-between; font-size: 11px; color: #6b7280; margin-top: 4px; font-weight: 500; }
@@ -532,7 +527,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           .pdf-table li { margin-bottom: 4px; }
 
           .p2-text-block { width: calc(100% - 80px); margin: 0 auto 40px; font-size: 16px; line-height: 1.6; text-align: justify; }
-          .p2-pie-side { width: 280px; font-size: 16px; line-height: 1.6; margin-top: 40px;}
+          .p2-pie-side { width: 300px; font-size: 16px; line-height: 1.6; margin-top: 40px;}
         </style>
 
         <!-- PAGE 1 -->
@@ -546,15 +541,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="row"><div class="col1">Altitude (m)</div><div>${altitudeM}</div></div>
               <div class="row"><div class="col1">Generated</div><div>${generatedDate}</div></div>
           </div>
-          
           <div class="pdf-section">
               <div class="pdf-section-title">Disease Map Overview</div>
               <img class="pdf-map-img" src="${diseaseMapShot.jpegData}" alt="Disease Map" />
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Disease Field Severity</div>
                   <div class="pdf-severity-bar-wrap">
-                      <div class="pdf-severity-marker" style="left: ${diseaseIncidence.toFixed(1)}%;">
-                          <span>${diseaseIncidence.toFixed(1)}%</span>
+                      <div class="pdf-severity-marker" style="left: calc(${diseaseIncidence.toFixed(1)}% - 20px);">
+                          <span>${diseaseIncidence.toFixed(0)}%</span>
                           <div class="arrow">▼</div>
                       </div>
                       <div class="pdf-severity-bar"></div>
@@ -562,15 +556,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
                   <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
               </div>
           </div>
-          
           <div class="pdf-section">
               <div class="pdf-section-title">Pest Map Overview</div>
               <img class="pdf-map-img" src="${pestMapShot.jpegData}" alt="Pest Map" />
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Pest Field Severity</div>
                   <div class="pdf-severity-bar-wrap">
-                      <div class="pdf-severity-marker" style="left: ${pestIncidence.toFixed(1)}%;">
-                          <span>${pestIncidence.toFixed(1)}%</span>
+                      <div class="pdf-severity-marker" style="left: calc(${pestIncidence.toFixed(1)}% - 20px);">
+                          <span>${pestIncidence.toFixed(0)}%</span>
                           <div class="arrow">▼</div>
                       </div>
                       <div class="pdf-severity-bar"></div>
@@ -587,7 +580,8 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           <div style="display: flex; justify-content: center; gap: 20px; padding: 0 40px;">
             ${pieSvgHtml}
             <div class="p2-pie-side">
-              The report shows an overall ${severityInterpretation} severity pattern based on a ${overallIncidence.toFixed(1)}% field incidence rate, with ${primaryConcern} being the primary concern.
+              The report shows an overall ${severityInterpretation} severity pattern based on a ${overallIncidence.toFixed(1)}% field incidence rate, with ${primaryConcern} being the primary concern.<br><br>
+              Leaf scald = ${scaldIncidenceDisplay}%
             </div>
           </div>
 
