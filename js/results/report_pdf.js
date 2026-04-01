@@ -331,14 +331,15 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
   ];
   
   let total = data.reduce((s, d) => s + d.val, 0) || 1;
-  let svg = `<svg viewBox="-1 -1 2 2" style="width: 250px; height: 250px; transform: rotate(-90deg); overflow: visible;">`;
-  let labelsHtml = '';
+  let svg = `<svg viewBox="-1 -1 2 2" style="width: 220px; height: 220px; transform: rotate(-90deg); overflow: visible;">`;
+  let legendHtml = '';
   let cumulativePercent = 0;
   
   data.forEach(slice => {
       if(slice.val === 0) return;
+      const slicePercent = slice.val / total;
       const startP = cumulativePercent;
-      cumulativePercent += slice.val / total;
+      cumulativePercent += slicePercent;
       const endP = cumulativePercent;
       
       const startX = Math.cos(2 * Math.PI * startP);
@@ -347,25 +348,33 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
       const endY = Math.sin(2 * Math.PI * endP);
       const largeArc = (endP - startP) > 0.5 ? 1 : 0;
       
-      svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
+      if (slicePercent > 0.999) {
+          // Fallback if there is only 1 disease taking up 100%, draw full circle
+          svg += `<circle cx="0" cy="0" r="1" fill="${slice.color}" />`;
+      } else {
+          svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
+      }
 
-      const midP = startP + (slice.val / total) / 2;
-      const lx = Math.cos(2 * Math.PI * (midP)); 
-      const ly = Math.sin(2 * Math.PI * (midP));
-      const left = 125 + (lx * 175); // Pushed labels further outside the pie chart
-      const top = 125 + (ly * 175);
-      
-      labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000;">
-          ${slice.label}<br>${slice.val}
-      </div>`;
+      // Build the neat legend underneath the chart
+      const pctStr = (slicePercent * 100).toFixed(1) + '%';
+      legendHtml += `
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 14px; height: 14px; background: ${slice.color}; border: 1px solid #e5e7eb; border-radius: 2px;"></div>
+          <span style="font-size: 13px; color: #374151; font-weight: 500;">${slice.label} (${pctStr})</span>
+        </div>
+      `;
   });
   svg += `</svg>`;
 
   return `
-    <div style="position: relative; width: 400px; height: 350px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
-      ${svg}
-      ${labelsHtml}
-      <div style="position:absolute; bottom: -10px; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: bold;">In %</div>
+    <div style="display: flex; flex-direction: column; align-items: center; width: 340px;">
+      <div style="position: relative; width: 220px; height: 220px; margin-bottom: 24px;">
+        ${svg}
+      </div>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; column-gap: 16px; row-gap: 8px; width: 100%; margin-bottom: 16px;">
+        ${legendHtml}
+      </div>
+      <div style="font-size: 16px; font-weight: bold; text-align: center; color: #000;">In %</div>
     </div>
   `;
 }
@@ -531,13 +540,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
           .p2-text-block { width: calc(100% - 80px); margin: 0 auto 40px; font-size: 15px; line-height: 1.6; text-align: justify; }
           
-          /* Updated Page 2 box layout to pull Leaf Scald OUTSIDE */
+          /* Updated Page 2 box layout to pull Leaf Scald INSIDE the box */
           .p2-pie-side { 
+              width: 340px;
               font-size: 15px; 
               line-height: 1.6; 
               background: #fff; 
               border-radius: 12px; 
-              padding: 20px; 
+              padding: 24px; 
               border: 1px solid #e5e7eb; 
               box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
           }
@@ -594,13 +604,10 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           
           <div style="display: flex; justify-content: center; align-items: center; gap: 40px; padding: 0 40px;">
             ${pieSvgHtml}
-            <div style="display: flex; flex-direction: column; width: 340px;">
-              <div class="p2-pie-side">
-                The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
-              </div>
-              <div style="margin-top: 24px; font-size: 15px; color: #111827;">
-                Leaf scald = ${cScaldIncidence}%
-              </div>
+            <div class="p2-pie-side">
+              The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
+              <br><br>
+              Leaf scald = ${cScaldIncidence}%
             </div>
           </div>
 
@@ -612,6 +619,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
             This report utilizes dual mapping techniques to present the finding. Disease detections are represented by red markers, while pest detections are indicated by orange markers. The level of severity is determined based on Disease Incidence, defined as the percentage of images containing identified threats, and is illustrated using the severity scale provided below. Furthermore, variations in color intensity correspond to the degree of severity, with stronger intensities indicating more severe conditions.
           </div>
         </div>
+
 
         <!-- PAGE 3 -->
         <div class="pdf-page">
