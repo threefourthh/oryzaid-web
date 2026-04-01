@@ -352,8 +352,8 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
       const midP = startP + (slice.val / total) / 2;
       const lx = Math.cos(2 * Math.PI * (midP)); 
       const ly = Math.sin(2 * Math.PI * (midP));
-      const left = 125 + (lx * 170); 
-      const top = 125 + (ly * 170);
+      const left = 125 + (lx * 175); // Pushed labels further outside the pie chart
+      const top = 125 + (ly * 175);
       
       labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000;">
           ${slice.label}<br>${slice.val}
@@ -531,15 +531,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
           .p2-text-block { width: calc(100% - 80px); margin: 0 auto 40px; font-size: 15px; line-height: 1.6; text-align: justify; }
           
+          /* Updated Page 2 box layout to pull Leaf Scald OUTSIDE */
           .p2-pie-side { 
-              width: 320px; 
               font-size: 15px; 
               line-height: 1.6; 
-              margin-top: 40px; 
               background: #fff; 
               border-radius: 12px; 
               padding: 20px; 
-              border: 1px solid #f3f4f6; 
+              border: 1px solid #e5e7eb; 
               box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
           }
         </style>
@@ -562,12 +561,13 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Disease Field Severity</div>
                   <div class="pdf-severity-bar-wrap">
-                      <div class="pdf-severity-marker" style="left: ${diseaseIncidence.toFixed(1)}%;">
+                      <div class="pdf-severity-marker" style="left: calc(${diseaseIncidence.toFixed(1)}% - 20px);">
                           <span>${diseaseIncidence.toFixed(0)}%</span>
                           <div class="arrow">▼</div>
                       </div>
                       <div class="pdf-severity-bar"></div>
                   </div>
+                  <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
               </div>
           </div>
           
@@ -577,12 +577,13 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="pdf-sev-container">
                   <div class="pdf-sev-title">Pest Field Severity</div>
                   <div class="pdf-severity-bar-wrap">
-                      <div class="pdf-severity-marker" style="left: ${pestIncidence.toFixed(1)}%;">
+                      <div class="pdf-severity-marker" style="left: calc(${pestIncidence.toFixed(1)}% - 20px);">
                           <span>${pestIncidence.toFixed(0)}%</span>
                           <div class="arrow">▼</div>
                       </div>
                       <div class="pdf-severity-bar"></div>
                   </div>
+                  <div class="pdf-severity-labels"><span>0%</span><span>50%</span><span>100%</span></div>
               </div>
           </div>
         </div>
@@ -591,11 +592,15 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
         <div class="pdf-page">
           <div class="page-title" style="margin-bottom: 20px;">DETECTION SUMMARY</div>
           
-          <div style="display: flex; justify-content: center; gap: 20px; padding: 0 40px;">
+          <div style="display: flex; justify-content: center; align-items: center; gap: 40px; padding: 0 40px;">
             ${pieSvgHtml}
-            <div class="p2-pie-side">
-              The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.<br><br>
-              Leaf scald = ${cScaldIncidence}%
+            <div style="display: flex; flex-direction: column; width: 340px;">
+              <div class="p2-pie-side">
+                The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
+              </div>
+              <div style="margin-top: 24px; font-size: 15px; color: #111827;">
+                Leaf scald = ${cScaldIncidence}%
+              </div>
             </div>
           </div>
 
