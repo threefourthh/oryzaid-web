@@ -20,25 +20,12 @@ function getText(id) {
   return (el.textContent || "").trim();
 }
 
-function missionId() {
-  return (
-    getParam("mission_id") || getParam("mission") || getText("metaMissionId") || "unknown_mission"
-  );
-}
-
 function todayISO() {
   const d = new Date();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${yyyy}-${mm}-${dd}`;
-}
-
-function nowTime() {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
 }
 
 function wait(ms) {
@@ -62,45 +49,10 @@ function getFieldValue(...values) {
   return "—";
 }
 
-function getPercentText(id) {
-  const el = document.getElementById(id);
-  if (!el) return "0%";
-  const t = (el.textContent || "").trim();
-  return t || "0%";
-}
-
-function normalizePercent(t) {
-  const n = parseFloat(String(t).replace("%", "").trim());
-  return Number.isFinite(n) ? n : 0;
-}
-
-// Fetch images from database for the PDF gallery
-async function fetchImageInfo(url) {
-  if (!url) return null;
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous";
-    img.onload = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = img.width;
-      canvas.height = img.height;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0);
-      resolve({ base64: canvas.toDataURL("image/jpeg", 0.90), w: img.width, h: img.height });
-    };
-    img.onerror = () => resolve(null);
-    setTimeout(() => resolve(null), 6000); 
-    img.src = url;
-  });
-}
-
 function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
   const sw = sourceCanvas.width;
   const sh = sourceCanvas.height;
-
-  if (!sw || !sh) {
-    throw new Error("Source canvas is empty");
-  }
+  if (!sw || !sh) throw new Error("Source canvas is empty");
 
   const cw = Math.max(1, Math.round(sw * cropRatio));
   const ch = Math.max(1, Math.round(sh * cropRatio));
@@ -111,7 +63,6 @@ function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
   const out = document.createElement("canvas");
   out.width = cw;
   out.height = ch;
-
   const ctx = out.getContext("2d");
   ctx.drawImage(sourceCanvas, sx, sy, cw, ch, 0, 0, cw, ch);
 
@@ -123,110 +74,23 @@ function cropCanvasCenter(sourceCanvas, cropRatio = 1.0) {
 
 async function captureEl(el, label) {
   if (!el) throw new Error(`${label} element not found`);
-
   const canvas = await window.html2canvas(el, {
     scale: 2,
     useCORS: true,
     backgroundColor: "#ffffff",
     logging: false,
   });
-
-  if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
-    throw new Error(`${label} capture failed (canvas empty)`);
-  }
-
   return {
     canvas,
     jpegData: canvas.toDataURL("image/jpeg", 0.95),
   };
 }
 
-function writeKeyValue(pdf, x, y, key, value) {
-  pdf.setFont("helvetica", "bold");
-  pdf.text(`${key}:`, x, y);
-  pdf.setFont("helvetica", "normal");
-  pdf.text(String(value ?? "—"), x + 38, y);
-}
-
-function drawSectionTitle(pdf, title, x, y) {
-  pdf.setFont("helvetica", "bold");
-  pdf.setFontSize(12);
-  pdf.setTextColor(0, 0, 0);
-  pdf.text(title, x, y);
-}
-
-function drawWrappedText(pdf, text, x, y, maxWidth, lineHeight = 5) {
-  const lines = pdf.splitTextToSize(String(text || ""), maxWidth);
-  pdf.text(lines, x, y);
-  return y + lines.length * lineHeight;
-}
-
-function ensurePageSpace(pdf, y, needed = 20, resetY = 18) {
-  const pageH = pdf.internal.pageSize.getHeight();
-  if (y + needed > pageH - 15) {
-    pdf.addPage();
-    return resetY;
-  }
-  return y;
-}
-
-function addFittedImage(pdf, jpegData, imgWpx, imgHpx, x, y, maxW, maxH) {
-  const ratio = Math.min(maxW / imgWpx, maxH / imgHpx);
-  const w = imgWpx * ratio;
-  const h = imgHpx * ratio;
-  const dx = x + (maxW - w) / 2;
-  const dy = y + (maxH - h) / 2;
-
-  pdf.addImage(jpegData, "JPEG", dx, dy, w, h);
-  return { x: dx, y: dy, w, h };
-}
-
-function addMapImage(pdf, mapShot, x, y, w, h) {
-  pdf.setDrawColor(210, 210, 210);
-  pdf.roundedRect(x, y, w, h, 3, 3, "S");
-  addFittedImage(
-    pdf,
-    mapShot.jpegData,
-    mapShot.canvas.width,
-    mapShot.canvas.height,
-    x,
-    y,
-    w,
-    h
-  );
-}
-
-function drawGradientScale(pdf, x, y, w, h) {
-  const steps = 100;
-  const stepW = w / steps;
-  for (let i = 0; i < steps; i++) {
-    const pct = i / steps;
-    let r, g, b;
-    if (pct < 0.5) {
-      const p = pct * 2;
-      r = 250 + (255 - 250) * p;
-      g = 233 - (233 - 170) * p;
-      b = 0;
-    } else {
-      const p = (pct - 0.5) * 2;
-      r = 255 - (255 - 220) * p;
-      g = 170 - (170 - 38) * p;
-      b = 0 + (38 - 0) * p;
-    }
-    pdf.setFillColor(r, g, b);
-    pdf.rect(x + i * stepW, y, stepW + 0.5, h, 'F');
-  }
-}
-
 function hideLiveMapUIForCapture() {
   const selectors = [
-    ".leaflet-control-zoom",
-    ".maizeeye-legend",
-    ".leaflet-control-attribution",
-    ".leaflet-popup",
-    ".layer-status-bar",
+    ".leaflet-control-zoom", ".maizeeye-legend", ".leaflet-control-attribution",
+    ".leaflet-popup", ".layer-status-bar",
   ];
-
   const changed = [];
   selectors.forEach((selector) => {
     document.querySelectorAll(selector).forEach((el) => {
@@ -234,11 +98,8 @@ function hideLiveMapUIForCapture() {
       el.style.visibility = "hidden";
     });
   });
-
   return () => {
-    changed.forEach(([el, prev]) => {
-      el.style.visibility = prev;
-    });
+    changed.forEach(([el, prev]) => { el.style.visibility = prev; });
   };
 }
 
@@ -247,43 +108,27 @@ async function waitForLeafletTiles(mapEl, timeoutMs = 2200) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     const tiles = Array.from(mapEl.querySelectorAll(".leaflet-tile"));
-    if (!tiles.length) {
-      await wait(100);
-      continue;
-    }
+    if (!tiles.length) { await wait(100); continue; }
     const notReady = tiles.some((img) => !img.complete || img.naturalWidth === 0);
     if (!notReady) return;
     await wait(120);
   }
 }
 
-async function waitForMapStable(map) {
-  if (!map) return;
-  await nextFrame();
-  await nextFrame();
-  await wait(350);
-}
-
 async function captureVisibleMapFallback() {
   const mapEl = document.getElementById("map");
   if (!mapEl) throw new Error("Map element not found");
-
   const map = window.map;
   const oldScrollX = window.scrollX;
   const oldScrollY = window.scrollY;
   const restoreUI = hideLiveMapUIForCapture();
-
   try {
     mapEl.scrollIntoView({ behavior: "auto", block: "start", inline: "nearest" });
     await nextFrame();
     await wait(250);
-
     if (map && typeof map.invalidateSize === "function") map.invalidateSize(true);
-
-    await waitForMapStable(map);
     await waitForLeafletTiles(mapEl, 2200);
     await wait(250);
-
     return await captureEl(mapEl, "Map");
   } finally {
     restoreUI();
@@ -299,28 +144,12 @@ function getMissionCenterLatLng(mission) {
 }
 
 function getBoundaryLatLngs(mission) {
-  const raw =
-    mission?.field_boundary ||
-    mission?.polygon ||
-    mission?.boundary_points ||
-    mission?.drawn_polygon ||
-    mission?.field_polygon ||
-    [];
-
+  const raw = mission?.field_boundary || mission?.polygon || mission?.boundary_points || mission?.drawn_polygon || mission?.field_polygon || [];
   if (!Array.isArray(raw) || !raw.length) return [];
-
-  return raw
-    .map((p) => {
-      if (Array.isArray(p) && p.length >= 2) {
-        return safeNum(p[0]) != null && safeNum(p[1]) != null
-          ? [safeNum(p[0]), safeNum(p[1])]
-          : null;
-      }
-      const lat = safeNum(p?.lat ?? p?.latitude);
-      const lng = safeNum(p?.lng ?? p?.longitude);
-      return lat != null && lng != null ? [lat, lng] : null;
-    })
-    .filter(Boolean);
+  return raw.map((p) => {
+    if (Array.isArray(p) && p.length >= 2) return [safeNum(p[0]), safeNum(p[1])];
+    return [safeNum(p?.lat ?? p?.latitude), safeNum(p?.lng ?? p?.longitude)];
+  }).filter(p => p[0] != null && p[1] != null);
 }
 
 function getDetectionLatLng(det) {
@@ -332,11 +161,11 @@ function getDetectionLatLng(det) {
 
 function normalizeLabel(raw) {
   const label = String(raw || "").trim().toLowerCase();
-  if (label === "bacterial leaf blight" || label === "bacterial_leaf_blight") return "Bacterial_Leaf_Blight";
-  if (label === "fungal spot" || label === "fungal_spot") return "Fungal_Spot";
-  if (label === "leaf scald" || label === "leaf_scald") return "Leaf_Scald";
-  if (label === "tungro") return "Tungro";
-  if (label === "rice hispa" || label === "rice_hispa") return "Rice_Hispa";
+  if (label.includes("bacterial") || label.includes("blight")) return "Bacterial_Leaf_Blight";
+  if (label.includes("fungal") || label.includes("spot")) return "Fungal_Spot";
+  if (label.includes("scald")) return "Leaf_Scald";
+  if (label.includes("tungro")) return "Tungro";
+  if (label.includes("hispa")) return "Rice_Hispa";
   return "Unknown";
 }
 
@@ -368,27 +197,10 @@ function waitForExportTiles(mapEl, timeoutMs = 3200) {
 
 async function captureExportMap(filterType) {
   const mission = cachedMission || window.currentResultsMission || null;
-  const realDetections =
-    Array.isArray(cachedDetections) && cachedDetections.length
-      ? cachedDetections
-      : Array.isArray(window.currentResultsDetections)
-      ? window.currentResultsDetections
-      : [];
-
+  const realDetections = Array.isArray(cachedDetections) && cachedDetections.length ? cachedDetections : [];
   let detectionsToUse = [...realDetections];
 
-  if (detectionsToUse.length === 0 && mission) {
-    const center = getMissionCenterLatLng(mission);
-    detectionsToUse = [{
-      latitude: center[0] + 0.0003,
-      longitude: center[1] + 0.0003,
-      class_name: filterType === 'disease' ? "Bacterial_Leaf_Blight" : "Rice_Hispa"
-    }];
-  }
-
-  if (!mission) {
-    return await captureVisibleMapFallback();
-  }
+  if (!mission) return await captureVisibleMapFallback();
 
   let host = null;
   let exportMap = null;
@@ -398,156 +210,171 @@ async function captureExportMap(filterType) {
     host.style.position = "fixed";
     host.style.left = "-10000px";
     host.style.top = "0";
-    
     host.style.width = "800px";
     host.style.height = "600px";
     host.style.background = "#ffffff";
-    host.style.zIndex = "-1";
     document.body.appendChild(host);
 
-    exportMap = L.map(host, {
-      zoomControl: false,
-      attributionControl: false,
-      // FIX 2: Set safe Max Zoom limits to prevent gray squares while zooming close
-      maxZoom: 19, 
-      preferCanvas: true,
-    });
+    exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 19, preferCanvas: true });
 
-    L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        maxZoom: 19, 
-        maxNativeZoom: 18, // Stretches high res tiles gracefully instead of failing
-        crossOrigin: true,
-        attribution: "Tiles &copy; Esri",
-      }
-    ).addTo(exportMap);
+    // Use Esri World Street Map for the light base
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19, maxNativeZoom: 18, crossOrigin: true
+    }).addTo(exportMap);
 
     const missionCenter = getMissionCenterLatLng(mission);
     const boundaryLatLngs = getBoundaryLatLngs(mission);
-
     let boundaryLayer = null;
 
     if (boundaryLatLngs.length >= 3) {
       boundaryLayer = L.polygon(boundaryLatLngs, {
-        color: "#F6CF3A",
-        weight: 4,
-        fillColor: "#F6CF3A",
-        fillOpacity: 0.15,
+        color: "#F6CF3A", weight: 4, fillColor: "#F6CF3A", fillOpacity: 0.15,
       }).addTo(exportMap);
     }
 
-    let exportBounds = null;
-    if (boundaryLayer && typeof boundaryLayer.getBounds === "function") {
-      exportBounds = boundaryLayer.getBounds();
-    }
-
+    const exportBounds = boundaryLayer && typeof boundaryLayer.getBounds === "function" ? boundaryLayer.getBounds() : null;
     const dotLayer = L.layerGroup();
-    const filterBounds = exportBounds ? exportBounds.pad(0.1) : null;
 
     detectionsToUse.forEach((det) => {
       const latlng = getDetectionLatLng(det);
       if (!latlng) return;
-      if (filterBounds && !filterBounds.contains(latlng)) return;
-
       const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-
+      
       let dotColor = null;
       if (isDisease(label) && filterType === 'disease') dotColor = "#ef4444"; 
       if (isPest(label) && filterType === 'pest') dotColor = "#f97316";    
 
       if (dotColor) {
-        L.circleMarker(latlng, {
-          radius: 7,
-          fillColor: dotColor,
-          color: "#ffffff",
-          weight: 1.5,
-          fillOpacity: 0.95
-        }).addTo(dotLayer);
+        L.circleMarker(latlng, { radius: 7, fillColor: dotColor, color: "#ffffff", weight: 1.5, fillOpacity: 0.95 }).addTo(dotLayer);
       }
     });
 
-    if (dotLayer.getLayers().length) {
-      dotLayer.addTo(exportMap);
-    }
-
+    dotLayer.addTo(exportMap);
     if (boundaryLayer && boundaryLayer.bringToFront) boundaryLayer.bringToFront();
 
     exportMap.invalidateSize(false);
 
-    // FIX 2: Fit Bounds extremely tight to the field. Padding set to 10px to ensure max closeness!
-    if (exportBounds && typeof exportBounds.isValid === "function" && exportBounds.isValid()) {
-      exportMap.fitBounds(exportBounds, {
-        padding: [10, 10], 
-        maxZoom: 19,
-        animate: false,
-      });
+    if (exportBounds && exportBounds.isValid()) {
+      exportMap.fitBounds(exportBounds, { padding: [10, 10], maxZoom: 19, animate: false });
     } else {
       exportMap.setView(missionCenter, 18, { animate: false });
     }
 
-    await nextFrame();
-    await nextFrame();
     await wait(450);
     await waitForExportTiles(host, 3200);
     await wait(250);
 
-    const canvas = await window.html2canvas(host, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: "#ffffff",
-      logging: false,
-      ignoreElements: (el) => {
-        const cl = el.classList;
-        return !!(
-          cl?.contains("leaflet-control-container") ||
-          cl?.contains("maizeeye-legend") ||
-          cl?.contains("layer-status-bar")
-        );
-      },
-    });
-
-    if (!canvas || canvas.width <= 0 || canvas.height <= 0) {
-      throw new Error("Export map capture failed");
-    }
-
+    const canvas = await window.html2canvas(host, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
     return cropCanvasCenter(canvas, 1.0); 
+
   } catch (err) {
-    console.warn("Export-map capture failed, falling back to visible map:", err);
     return await captureVisibleMapFallback();
   } finally {
-    try {
-      if (exportMap) exportMap.remove();
-    } catch {}
-    try {
-      if (host && host.parentNode) host.parentNode.removeChild(host);
-    } catch {}
+    try { if (exportMap) exportMap.remove(); } catch {}
+    try { if (host && host.parentNode) host.parentNode.removeChild(host); } catch {}
   }
 }
 
-function getDetectedIssues(diseases, pests) {
-  const detected = [...diseases, ...pests]
-    .map((item) => ({
-      ...item,
-      value: normalizePercent(getPercentText(item.id)),
-    }))
-    .filter((item) => item.value > 0)
-    .sort((a, b) => b.value - a.value);
+// ---------------------------------------------------------
+// CHART GENERATORS
+// ---------------------------------------------------------
+function buildPieSVG(cTungro, cBlb, cFungal, cHispa) {
+  const data = [
+    { label: "Tungro", val: cTungro, color: "#fef08a" }, // Yellow
+    { label: "Bacterial Leaf Blight", val: cBlb, color: "#bbf7d0" }, // Green
+    { label: "Fungal Spot", val: cFungal, color: "#f5d0fe" }, // Pink
+    { label: "Rice Hispa", val: cHispa, color: "#cffafe" }  // Cyan
+  ];
+  
+  let total = data.reduce((s, d) => s + d.val, 0) || 1;
+  let svg = `<svg viewBox="-1 -1 2 2" style="width: 250px; height: 250px; transform: rotate(-90deg); overflow: visible;">`;
+  let labelsHtml = '';
+  let cumulativePercent = 0;
+  
+  data.forEach(slice => {
+      if(slice.val === 0) return;
+      const startP = cumulativePercent;
+      cumulativePercent += slice.val / total;
+      const endP = cumulativePercent;
+      
+      const startX = Math.cos(2 * Math.PI * startP);
+      const startY = Math.sin(2 * Math.PI * startP);
+      const endX = Math.cos(2 * Math.PI * endP);
+      const endY = Math.sin(2 * Math.PI * endP);
+      const largeArc = (endP - startP) > 0.5 ? 1 : 0;
+      
+      svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
 
-  if (detected.length === 0) {
-    return [{ label: "Bacterial Leaf Blight", value: 35.0, type: "Disease", id: "Commonrust" }];
-  }
+      const midP = startP + (slice.val / total) / 2;
+      const lx = Math.cos(2 * Math.PI * (midP)); 
+      const ly = Math.sin(2 * Math.PI * (midP));
+      const left = 125 + (lx * 180); 
+      const top = 125 + (ly * 180);
+      
+      labelsHtml += `<div style="position: absolute; left: ${left}px; top: ${top}px; transform: translate(-50%, -50%); text-align: center; font-size: 14px; line-height: 1.4; color: #000;">
+          ${slice.label}<br>${slice.val}
+      </div>`;
+  });
+  svg += `</svg>`;
 
-  return detected;
+  return `
+    <div style="position: relative; width: 400px; height: 350px; display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
+      ${svg}
+      ${labelsHtml}
+      <div style="position:absolute; bottom: 0px; left: 50%; transform: translateX(-50%); font-size: 16px; font-weight: bold;">In %</div>
+    </div>
+  `;
 }
 
-function getSeverityLabel(value) {
-  if (value >= 51) return "Severe";
-  if (value >= 31) return "Moderate";
-  if (value > 0) return "Low";
-  return "None";
+function buildBarChartSVG(diseaseIncidence, pestIncidence) {
+  // Dynamic scaling based on max value
+  const maxVal = Math.max(40, Math.ceil(Math.max(diseaseIncidence, pestIncidence) / 10) * 10);
+  const hD = (diseaseIncidence / maxVal) * 200; 
+  const hP = (pestIncidence / maxVal) * 200;
+
+  return `
+  <div style="position: relative; width: 450px; height: 280px; margin: 0 auto; font-family: 'Inter', sans-serif;">
+      
+      <!-- Legends -->
+      <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 30px; padding-left: 100px; font-size: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #ff3b30;"></div>
+          Overall Disease Field Severity
+        </div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 12px; height: 12px; border-radius: 50%; background: #fb923c;"></div>
+          Overall Pest Field Severity
+        </div>
+      </div>
+
+      <div style="position: relative; height: 200px;">
+        <!-- Grid Lines & Y-Axis Labels -->
+        <div style="position: absolute; bottom: 0; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
+        <div style="position: absolute; bottom: 50px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
+        <div style="position: absolute; bottom: 100px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
+        <div style="position: absolute; bottom: 150px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
+        <div style="position: absolute; bottom: 200px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
+        
+        <div style="position: absolute; bottom: -8px; left: 0; font-size: 14px; color: #000;">0</div>
+        <div style="position: absolute; bottom: 42px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal * 0.25)}</div>
+        <div style="position: absolute; bottom: 92px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal * 0.50)}</div>
+        <div style="position: absolute; bottom: 142px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal * 0.75)}</div>
+        <div style="position: absolute; bottom: 192px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal)}</div>
+        
+        <!-- Bars -->
+        <div style="position: absolute; bottom: 1px; left: 70px; width: 140px; height: ${hD}px; background: #ff3b30; border-radius: 12px 12px 0 0; display: flex; justify-content: center; color: white; font-weight: normal; font-size: 14px; padding-top: 8px; box-sizing: border-box;">${diseaseIncidence.toFixed(0)}</div>
+        <div style="position: absolute; bottom: 1px; left: 250px; width: 140px; height: ${hP}px; background: #fb923c; border-radius: 12px 12px 0 0; display: flex; justify-content: center; color: #000; font-weight: normal; font-size: 14px; padding-top: 8px; box-sizing: border-box;">${pestIncidence.toFixed(0)}</div>
+      </div>
+
+      <!-- Bottom Label -->
+      <div style="position: absolute; bottom: -40px; width: 100%; text-align: center; font-size: 16px; padding-left: 30px; font-weight: bold;">In %</div>
+  </div>
+  `;
 }
 
+// ---------------------------------------------------------
+// MULTI-PAGE EXPORT LOGIC
+// ---------------------------------------------------------
 export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
   const btn = document.getElementById(btnId);
   if (!btn) return;
@@ -558,18 +385,14 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
     try {
       btn.disabled = true;
       btn.textContent = "Generating...";
-
-      showCenterNotif("Preparing mission report...", { showOk: false });
+      showCenterNotif("Preparing multi-page report...", { showOk: false });
       document.body.classList.add("pdf-exporting");
       await wait(150);
 
       const mission = cachedMission || window.currentResultsMission || {};
       const missionCenter = getMissionCenterLatLng(mission);
 
-      // ===============================================================
-      // FIX 1: DYNAMIC REVERSE GEOCODING DIRECTLY IN PDF SCRIPT!
-      // This guarantees the PDF uses the true location regardless of cache.
-      // ===============================================================
+      // Reverse geocode
       showCenterNotif("Verifying exact location...", { showOk: false });
       let finalPlaceName = null;
       try {
@@ -579,476 +402,440 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           const addr = data.address;
           const local = addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || "";
           const city = addr.town || addr.city || addr.municipality || addr.county || "";
-          
           finalPlaceName = [local, city].filter(Boolean).join(", ");
-          if (!finalPlaceName && data.display_name) {
-              finalPlaceName = data.display_name.split(",").slice(0, 2).join(", ");
-          }
         }
-      } catch(err) {
-        console.warn("Reverse geocode in PDF failed:", err);
-      }
+      } catch(err) {}
 
-      // Prioritize the newly fetched dynamic name first!
-      const place = finalPlaceName || getFieldValue(
-        mission.field_location, 
-        mission.place, 
-        mission.mission_name, 
-        getText("fieldLocation"), 
-        getText("metaPlace"), 
-        getParam("place")
-      );
-      // ===============================================================
-
-      showCenterNotif("Gathering detection images...", { showOk: false });
-      const sampleLimit = 6; 
-      const sampleDetections = [];
-      const seenClasses = new Set();
+      const place = finalPlaceName || getFieldValue(mission.field_location, mission.place, mission.mission_name, getText("fieldLocation"));
       
-      for (const det of cachedDetections) {
-        if (sampleDetections.length >= sampleLimit) break;
-        const url = det.annotated_image_url || det.image_url || det.url || det.photo_url;
-        if (url) {
-          const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-          if (!seenClasses.has(label) || sampleDetections.length < 3) {
-             sampleDetections.push({ ...det, url, label });
-             seenClasses.add(label);
-          }
-        }
-      }
-
-      const loadedImages = [];
-      for (const det of sampleDetections) {
-         const imgData = await fetchImageInfo(det.url);
-         if (imgData) {
-            let conf = safeNum(det.confidence);
-            if (conf <= 1) conf = conf * 100; 
-            
-            loadedImages.push({
-               ...imgData,
-               label: det.label,
-               conf: conf,
-               lat: safeNum(det.latitude ?? det.lat),
-               lng: safeNum(det.longitude ?? det.lng)
-            });
-         }
-      }
-
-      showCenterNotif("Capturing Disease Map...", { showOk: false });
+      showCenterNotif("Capturing maps...", { showOk: false });
       const diseaseMapShot = await captureExportMap('disease');
-      
-      showCenterNotif("Capturing Pest Map...", { showOk: false });
       const pestMapShot = await captureExportMap('pest');
 
-      showCenterNotif("Generating PDF document...", { showOk: false });
-
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF("p", "mm", "a4");
-
-      const areaHa = getFieldValue(mission.area_covered_ha, getParam("area_ha"), getText("metaArea"));
-      const altitudeM = getFieldValue(mission.flight_altitude_m, getParam("alt_m"), getText("metaAltitude"));
-
+      showCenterNotif("Calculating analytics...", { showOk: false });
+      const areaHa = getFieldValue(mission.area_covered_ha, getText("metaArea"));
+      const altitudeM = getFieldValue(mission.flight_altitude_m, getText("metaAltitude"));
       const generatedDate = todayISO();
-      const generatedTime = nowTime();
 
-      const diseases = [
-        { label: "Bacterial Leaf Blight", id: "Commonrust", type: "Disease" },
-        { label: "Fungal Spot", id: "NCLB", type: "Disease" },
-        { label: "Leaf Scald", id: "GrayLeafSpot", type: "Disease" },
-        { label: "Tungro", id: "FAW", type: "Disease" },
-      ];
-
-      const pests = [
-        { label: "Rice Hispa", id: "grasshopper", type: "Pest" },
-      ];
-
-      const detected = getDetectedIssues(diseases, pests);
-      const totalImages = safeNum(mission.total_images) || Math.max(cachedDetections.length, 100);
-      
-      let diseaseCount = 0;
-      let pestCount = 0;
-      
+      // Dynamic Math from Database
+      let cTungro = 0, cBlb = 0, cFungal = 0, cHispa = 0, cScald = 0;
       cachedDetections.forEach(det => {
         const lbl = normalizeLabel(det.issue_type || det.label || det.class_name);
-        if (isDisease(lbl)) diseaseCount++;
-        else if (isPest(lbl)) pestCount++;
+        if(lbl === 'Tungro') cTungro++;
+        if(lbl === 'Bacterial_Leaf_Blight') cBlb++;
+        if(lbl === 'Fungal_Spot') cFungal++;
+        if(lbl === 'Rice_Hispa') cHispa++;
+        if(lbl === 'Leaf_Scald') cScald++;
       });
       
-      if (cachedDetections.length === 0) {
-        diseaseCount = 38; 
-        pestCount = 12; 
-      }
-
+      const diseaseCount = cTungro + cBlb + cFungal + cScald;
+      const pestCount = cHispa;
+      const totalImages = safeNum(mission.total_images) || Math.max(cachedDetections.length, 100);
+      
       const diseaseIncidence = Math.min(100, (diseaseCount / totalImages) * 100);
       const pestIncidence = Math.min(100, (pestCount / totalImages) * 100);
-
-      const coordsStr = `${missionCenter[0].toFixed(5)}, ${missionCenter[1].toFixed(5)}`;
-
-      // ==========================================
-      // PAGE 1 
-      // ==========================================
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(16);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text("OryzAID Mission Report", 14, 16);
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      writeKeyValue(pdf, 14, 24, "Mission ID", missionId());
-      writeKeyValue(pdf, 14, 30, "Place", place);
-      writeKeyValue(pdf, 14, 36, "Coordinates", coordsStr); 
-      writeKeyValue(pdf, 14, 42, "Area (ha)", areaHa);
-      writeKeyValue(pdf, 14, 48, "Altitude (m)", altitudeM);
-      writeKeyValue(pdf, 14, 54, "Generated", `${generatedDate} ${generatedTime}`);
-
-      let y = 60;
-
-      // 1. DISEASE MAP SECTION
-      drawSectionTitle(pdf, "Disease Map Overview", 14, y);
-      y += 4;
+      const overallIncidence = Math.min(100, ((diseaseCount + pestCount) / totalImages) * 100);
       
-      addMapImage(pdf, diseaseMapShot, 60, y, 90, 67.5); 
-      y += 71.5;
+      let severityInterpretation = "low";
+      if (overallIncidence > 50) severityInterpretation = "severe";
+      else if (overallIncidence >= 31) severityInterpretation = "moderate";
 
-      drawSectionTitle(pdf, "Disease Field Severity", 14, y);
-      y += 8;
-      
-      let barX = 14;
-      let barW = 182;
-      let arrowX = barX + (diseaseIncidence / 100) * barW;
-      
-      pdf.setFillColor(0, 0, 0);
-      pdf.triangle(arrowX - 3, y - 4, arrowX + 3, y - 4, arrowX, y, "F");
-      
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(10);
-      pdf.text(`${diseaseIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
+      const primaryConcern = diseaseIncidence >= pestIncidence ? "diseases" : "pests";
 
-      drawGradientScale(pdf, barX, y, barW, 8);
-      y += 11;
-      
-      pdf.setFontSize(9);
-      pdf.text("Low (1-30%)", 14, y);
-      pdf.text("Moderate (31-50%)", 105, y, { align: "center" });
-      pdf.text("Severe (51%+)", 196, y, { align: "right" });
+      const pieSvgHtml = buildPieSVG(cTungro, cBlb, cFungal, cHispa);
+      const barSvgHtml = buildBarChartSVG(diseaseIncidence, pestIncidence);
+      const cScaldIncidence = ((cScald / totalImages) * 100).toFixed(0);
 
-      y += 11; 
-
-      // 2. PEST MAP SECTION
-      drawSectionTitle(pdf, "Pest Map Overview", 14, y);
-      y += 4;
-      
-      addMapImage(pdf, pestMapShot, 60, y, 90, 67.5);
-      y += 71.5; 
-
-      drawSectionTitle(pdf, "Pest Field Severity", 14, y);
-      y += 8;
-      
-      arrowX = barX + (pestIncidence / 100) * barW;
-      
-      pdf.setFillColor(0, 0, 0);
-      pdf.triangle(arrowX - 3, y - 4, arrowX + 3, y - 4, arrowX, y, "F");
-      
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(10);
-      pdf.text(`${pestIncidence.toFixed(1)}%`, arrowX, y - 6, { align: "center" });
-
-      drawGradientScale(pdf, barX, y, barW, 8);
-      y += 11;
-      
-      pdf.setFontSize(9);
-      pdf.text("Low (1-30%)", 14, y);
-      pdf.text("Moderate (31-50%)", 105, y, { align: "center" });
-      pdf.text("Severe (51%+)", 196, y, { align: "right" });
-
-      y += 9;
-
-      // 3. MAP LEGEND
-      drawSectionTitle(pdf, "Map Legend", 14, y);
-      y += 5;
-      
-      pdf.setDrawColor(255, 204, 0);
-      pdf.setFillColor(255, 204, 0);
-      pdf.setLineWidth(1.2);
-      pdf.line(14, y - 1, 24, y - 1);
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(10);
-      pdf.text("Field Boundary", 28, y);
-
-      pdf.setFillColor(239, 68, 68); 
-      pdf.setDrawColor(255, 255, 255);
-      pdf.circle(68, y - 1, 2.5, "FD");
-      pdf.text("Disease (Red)", 74, y);
-
-      pdf.setFillColor(249, 115, 22); 
-      pdf.setDrawColor(255, 255, 255);
-      pdf.circle(108, y - 1, 2.5, "FD");
-      pdf.text("Pest (Orange)", 114, y);
-
-      // ==========================================
-      // PAGE 2
-      // ==========================================
-      pdf.addPage();
-      let py = 18;
-
-      drawSectionTitle(pdf, "Detection Summary", 14, py);
-      py += 12;
-
-      const section = (title) => {
-        py = ensurePageSpace(pdf, py, 12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text(title.toUpperCase(), 14, py);
-        py += 8;
-      };
-
-      const row = (name, pct) => {
-        py = ensurePageSpace(pdf, py, 10);
-        pdf.setFont("helvetica", "normal");
-        pdf.text(name, 16, py);
-        let displayPct = pct;
-        if (pct === "0%" && name === "Bacterial Leaf Blight" && diseaseIncidence === 38) {
-          displayPct = "38%";
-        }
-        if (pct === "0%" && name === "Rice Hispa" && pestIncidence === 12) {
-          displayPct = "12%";
-        }
-        pdf.text(displayPct, 190, py, { align: "right" });
-        py += 7;
-      };
-
-      section("Diseases");
-      diseases.forEach((d) => row(d.label, getPercentText(d.id)));
-      py += 2;
-
-      section("Pests");
-      pests.forEach((p) => row(p.label, getPercentText(p.id)));
-      py += 6;
-
-      py = ensurePageSpace(pdf, py, 18);
-      pdf.setFont("helvetica", "bold");
-      pdf.setTextColor(0, 0, 0);
-      
-      pdf.text("Overall Disease Field Severity", 14, py);
-      pdf.text(`${diseaseIncidence.toFixed(1)}%`, 190, py, { align: "right" });
-      py += 7;
-      pdf.text("Overall Pest Field Severity", 14, py);
-      pdf.text(`${pestIncidence.toFixed(1)}%`, 190, py, { align: "right" });
-      py += 14;
-
-      // ==========================================
-      // PAGE 3: DETECTED THREAT SAMPLES
-      // ==========================================
-      if (loadedImages.length > 0) {
-        pdf.addPage();
-        py = 18;
-        drawSectionTitle(pdf, "Sample Field Detections", 14, py);
-        py += 10;
-
-        const colW = 85;
-        const imgMaxH = 55;
-        let startX = 14;
-        let currentX = startX;
-
-        loadedImages.forEach((item, index) => {
-          if (index > 0 && index % 2 === 0) {
-            currentX = startX; 
-            py += imgMaxH + 20; 
-          }
-          if (py + imgMaxH + 25 > 280) {
-            pdf.addPage();
-            py = 18;
-            currentX = startX;
-          }
-
-          pdf.setDrawColor(220, 220, 220);
-          pdf.roundedRect(currentX, py, colW, imgMaxH, 2, 2, "S");
+      const htmlContent = `
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+          * { box-sizing: border-box; }
+          .pdf-page { width: 800px; height: 1131px; background: #fff; color: #000; font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
           
-          addFittedImage(pdf, item.base64, item.w, item.h, currentX, py, colW, imgMaxH);
+          /* Page 1 Styles */
+          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 24px 0; font-size: 24px; font-weight: 600; letter-spacing: 0.5px; }
+          .pdf-details { margin: 40px 0 40px 100px; font-size: 16px; line-height: 2.2; font-weight: 500; }
+          .pdf-details .row { display: flex; }
+          .pdf-details .col1 { width: 180px; }
+          .pdf-section { text-align: center; margin-bottom: 45px; }
+          .pdf-section-title { font-size: 20px; font-weight: 600; margin-bottom: 12px; }
+          .pdf-map-img { width: 500px; height: 260px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
+          .pdf-sev-container { width: 500px; margin: 15px auto 0 auto; text-align: left; }
+          .pdf-sev-title { font-size: 16px; font-weight: 500; margin-bottom: 8px; }
+          .pdf-severity-bar { width: 100%; height: 40px; background: linear-gradient(to right, #fffbeb, #fcd34d, #ef4444); }
+          
+          /* Subsequent Pages */
+          .page-title { text-align: center; font-size: 22px; font-weight: 600; margin: 40px 0; }
+          .section-heading { font-size: 20px; font-weight: 600; margin: 40px 40px 10px 40px; }
+          
+          .pdf-table { width: calc(100% - 80px); margin: 0 auto; border-collapse: collapse; font-size: 14px; }
+          .pdf-table th, .pdf-table td { border: 1px solid #d1d5db; padding: 14px; text-align: left; vertical-align: top; line-height: 1.6; }
+          .pdf-table th { font-weight: bold; }
+          .pdf-table ul { padding-left: 20px; margin: 0; }
+          .pdf-table li { margin-bottom: 4px; }
 
-          const textY = py + imgMaxH + 6;
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(9);
-          pdf.setTextColor(156, 0, 150); 
-          pdf.text(`${item.label} (${item.conf.toFixed(1)}%)`, currentX, textY);
+          .p2-text-block { width: calc(100% - 80px); margin: 0 auto 40px; font-size: 16px; line-height: 1.6; text-align: justify; }
+          .p2-pie-side { width: 300px; font-size: 16px; line-height: 1.6; margin-top: 40px;}
+        </style>
 
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(8);
-          pdf.setTextColor(70, 70, 70);
-          if (item.lat && item.lng) {
-            pdf.text(`GPS: ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}`, currentX, textY + 4.5);
-          }
+        <!-- PAGE 1 -->
+        <div class="pdf-page">
+          <div class="pdf-header-green">OryzAID MISSION REPORT</div>
+          <div class="pdf-details">
+              <div class="row"><div class="col1">Mission ID</div><div>${mission.mission_id || mission.id || "Unknown"}</div></div>
+              <div class="row"><div class="col1">Place</div><div>${place}</div></div>
+              <div class="row"><div class="col1">Coordinates</div><div>${missionCenter[0].toFixed(6)}, ${missionCenter[1].toFixed(6)}</div></div>
+              <div class="row"><div class="col1">Area (ha)</div><div>${areaHa}</div></div>
+              <div class="row"><div class="col1">Altitude (m)</div><div>${altitudeM}</div></div>
+              <div class="row"><div class="col1">Generated</div><div>${generatedDate}</div></div>
+          </div>
+          <div class="pdf-section">
+              <div class="pdf-section-title">Disease Map Overview</div>
+              <img class="pdf-map-img" src="${diseaseMapShot.jpegData}" alt="Disease Map" />
+              <div class="pdf-sev-container">
+                  <div class="pdf-sev-title">Disease Field Severity</div>
+                  <div class="pdf-severity-bar"></div>
+              </div>
+          </div>
+          <div class="pdf-section">
+              <div class="pdf-section-title">Pest Map Overview</div>
+              <img class="pdf-map-img" src="${pestMapShot.jpegData}" alt="Pest Map" />
+              <div class="pdf-sev-container">
+                  <div class="pdf-sev-title">Pest Field Severity</div>
+                  <div class="pdf-severity-bar"></div>
+              </div>
+          </div>
+        </div>
 
-          currentX += colW + 10; 
-        });
+        <!-- PAGE 2 -->
+        <div class="pdf-page">
+          <div class="page-title" style="margin-bottom: 20px;">DETECTION SUMMARY</div>
+          
+          <div style="display: flex; justify-content: center; gap: 20px; padding: 0 40px;">
+            ${pieSvgHtml}
+            <div class="p2-pie-side">
+              The report shows an overall ${severityInterpretation} severity pattern based on a ${overallIncidence.toFixed(1)}% field incidence rate, with ${primaryConcern} being the primary concern.<br><br>
+              Leaf scald = ${cScaldIncidence}%
+            </div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            ${barSvgHtml}
+          </div>
+
+          <div class="p2-text-block" style="margin-top: 80px;">
+            This report utilizes dual mapping techniques to present the finding. Disease detections are represented by red markers, while pest detections are indicated by orange markers. The level of severity is determined based on Disease Incidence, defined as the percentage of images containing identified threats, and is illustrated using the severity scale provided below. Furthermore, variations in color intensity correspond to the degree of severity, with stronger intensities indicating more severe conditions.
+          </div>
+        </div>
+
+        <!-- PAGE 3 -->
+        <div class="pdf-page">
+          <div class="section-heading" style="margin-top: 60px;">Overall Disease Field Severity</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>Minimal impact; crops remain mostly healthy</td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>Noticeable infection; partial yield reduction expected</td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>Widespread damage; high yield loss likely</td>
+            </tr>
+          </table>
+
+          <div class="section-heading" style="margin-top: 60px;">Overall Pest Severity</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>Minimal pest damage; crops remain mostly healthy</td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>Noticeable pest damage; partial yield reduction</td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>Widespread infestation; high yield loss expected</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- PAGE 4 -->
+        <div class="pdf-page">
+          <div class="page-title" style="margin-top: 60px;">PEST AND DISEASES AFFECTED AREA</div>
+          
+          <div class="section-heading">Bacterial Leaf Blight (BLB)</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>
+                <ul>
+                  <li>Few plants show leaf blight symptoms</li>
+                  <li>Lesions are small and scattered</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>
+                <ul>
+                  <li>Infection is noticeable in the affected area</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>
+                <ul>
+                  <li>Majority of plants are affected</li>
+                  <li>Extensive leaf drying and wilting observed</li>
+                  <li>Significant yield loss is expected</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+
+          <div class="section-heading" style="margin-top: 60px;">Rice Hispa (Insect Damage)</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>
+                <ul>
+                  <li>Minor leaf scraping damage</li>
+                  <li>Scattered feeding marks</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>
+                <ul>
+                  <li>Feeding damage is noticeable across the affected area</li>
+                  <li>Leaves show visible scraping and discoloration</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>
+                <ul>
+                  <li>Extensive leaf damage in the affected area</li>
+                  <li>Severe impact on crop growth and yield</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- PAGE 5 -->
+        <div class="pdf-page">
+          <div class="section-heading" style="margin-top: 60px;">Leaf Scald</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>
+                <ul>
+                  <li>Few scald lesions observed</li>
+                  <li>Symptoms are scattered and limited</li>
+                  <li>Minimal impact on crop</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>
+                <ul>
+                  <li>Lesions are increasing and spreading</li>
+                  <li>Noticeable damage across the affected area</li>
+                  <li>Moderate reduction in plant health</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>
+                <ul>
+                  <li>Large brown patches lesions dominate the affected area</li>
+                  <li>Severe leaf damage is evident</li>
+                  <li>High yield loss is expected</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+
+          <div class="section-heading" style="margin-top: 60px;">Rice Tungro Disease</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>
+                <ul>
+                  <li>Few infected plants observed</li>
+                  <li>Mild yellowing of leaves</li>
+                  <li>Limited spread of the disease</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>
+                <ul>
+                  <li>Infection is noticeable across the affected area</li>
+                  <li>Yellow to yellow-orange discoloration visible</li>
+                  <li>Some stunting of plants</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>
+                <ul>
+                  <li>Widespread infection across the affected area</li>
+                  <li>Strong discoloration</li>
+                  <li>Severe yield loss is expected</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- PAGE 6 -->
+        <div class="pdf-page">
+          <div class="section-heading" style="margin-top: 60px;">Fungal</div>
+          <table class="pdf-table">
+            <tr>
+              <th style="width:25%;">Severity Level</th>
+              <th style="width:25%;">Field Area Affected</th>
+              <th style="width:50%;">Interpretation</th>
+            </tr>
+            <tr>
+              <td>Low</td>
+              <td>0-30%</td>
+              <td>
+                <ul>
+                  <li>Scattered spots and lesions observed</li>
+                  <li>Diseases are present but limited</li>
+                  <li>Minimal effect on overall affected area</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Moderate</td>
+              <td>31-50%</td>
+              <td>
+                <ul>
+                  <li>Mixed symptoms visible across the affected area</li>
+                  <li>Lesions increasing in size and number</li>
+                  <li>Moderate stress on plants</li>
+                </ul>
+              </td>
+            </tr>
+            <tr>
+              <td>Severe</td>
+              <td>51-100%</td>
+              <td>
+                <ul>
+                  <li>Extensive and overlapping disease symptoms</li>
+                  <li>Significant to severe yield loss expected</li>
+                </ul>
+              </td>
+            </tr>
+          </table>
+          
+          <div style="position: absolute; bottom: 40px; width: 100%; text-align: center; color: #6b7280; font-size: 14px; font-style: italic;">
+            Generated by OryzAID Results Dashboard
+          </div>
+        </div>
+      `;
+
+      showCenterNotif("Compiling PDF pages...", { showOk: false });
+      
+      const wrapper = document.createElement("div");
+      wrapper.style.position = "fixed";
+      wrapper.style.left = "-9999px";
+      wrapper.style.top = "0";
+      wrapper.innerHTML = htmlContent;
+      document.body.appendChild(wrapper);
+      
+      await wait(500); // Allow fonts to render
+
+      const pages = wrapper.querySelectorAll('.pdf-page');
+      const pdf = new window.jspdf.jsPDF("p", "pt", "a4");
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      for (let i = 0; i < pages.length; i++) {
+        if (i > 0) pdf.addPage();
+        showCenterNotif(`Rendering page ${i + 1} of 6...`, { showOk: false });
         
-        pdf.setTextColor(0, 0, 0); 
+        const canvas = await window.html2canvas(pages[i], { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+        pdf.addImage(canvas.toDataURL("image/jpeg", 1.0), "JPEG", 0, 0, pdfWidth, pdfHeight);
       }
 
-      // ==========================================
-      // EXHAUSTIVE REPORT GUIDE
-      // ==========================================
-      py = ensurePageSpace(pdf, py, 40);
-      drawSectionTitle(pdf, "Report Guide", 14, py);
-      py += 6;
+      document.body.removeChild(wrapper);
 
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      pdf.setTextColor(70, 70, 70);
+      showCenterNotif("Saving document...", { showOk: false });
+      pdf.save(`${mission.mission_id || "oryzaid_report"}.pdf`);
 
-      const introText = "This report utilizes dual mapping techniques to present the finding. Disease detections are represented by red markers, while pest detections are indicated by orange markers. The level of severity is determined based on Disease Incidence, defined as the percentage of images containing identified threats, and is illustrated using the severity scale provided below. Furthermore, variations in color intensity correspond to the degree of severity, with stronger intensities indicating more severe conditions.";
-      py = drawWrappedText(pdf, introText, 14, py, 182, 4.5);
-      py += 8;
+      showCenterNotif("Report downloaded successfully!", { showOk: true, okText: "Done" });
 
-      py = ensurePageSpace(pdf, py, 30);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.setTextColor(0, 0, 0);
-      pdf.text("Overall Disease Field Severity", 14, py);
-      py += 6;
-
-      const diseaseScales = [
-        { level: "Low Severity", area: "0–30%", desc: "Only a small portion of the field is affected\nMost plants remain healthy and productive\nMinimal impact on overall yield" },
-        { level: "Moderate Severity", area: "31–50%", desc: "Infection is noticeable across the field\nA significant portion of plants are affected\nModerate reduction in crop yield is expected" },
-        { level: "Severe Severity", area: "51–100%", desc: "The majority of the entire field is affected\nDiseases are widespread and dominant\nMost plants show visible symptoms\nSignificant to severe yield loss is expected" }
-      ];
-
-      diseaseScales.forEach(s => {
-        py = ensurePageSpace(pdf, py, 20);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9.5);
-        pdf.text(`• ${s.level} (Field Area Affected: ${s.area})`, 16, py);
-        py += 4.5;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        py = drawWrappedText(pdf, `Meaning:\n${s.desc}`, 20, py, 172, 4.5);
-        py += 2;
-      });
-      py += 4;
-
-      py = ensurePageSpace(pdf, py, 30);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text("Overall Pest Severity", 14, py);
-      py += 6;
-
-      const pestScales = [
-        { level: "Low Severity", area: "0–30%", desc: "Only a small portion of the field shows pest damage\nFeeding or scraping is minimal\nMost plants remain healthy\nMinimal impact on overall growth and yield" },
-        { level: "Moderate Severity", area: "31–50%", desc: "Pest damage is noticeable across the field\nA significant portion of plants are affected\nLeaves show visible scraping or partial tissue loss\nModerate reduction in growth and yield expected" },
-        { level: "Severe Severity", area: "51–100%", desc: "The majority of the entire field is affected by pests\nLeaves are heavily damaged, partially or fully damaged\nPest infestation dominates the field\nSignificant reduction in crop growth and yield" }
-      ];
-
-      pestScales.forEach(s => {
-        py = ensurePageSpace(pdf, py, 20);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(9.5);
-        pdf.text(`• ${s.level} (Field Area Affected: ${s.area})`, 16, py);
-        py += 4.5;
-        pdf.setFont("helvetica", "normal");
-        pdf.setFontSize(9);
-        py = drawWrappedText(pdf, `Meaning:\n${s.desc}`, 20, py, 172, 4.5);
-        py += 2;
-      });
-      py += 4;
-
-      py = ensurePageSpace(pdf, py, 30);
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(11);
-      pdf.text("Pests and Diseases Affected Area", 14, py);
-      py += 6;
-
-      const specificGuides = [
-        {
-          title: "Bacterial Leaf Blight (BLB)",
-          items: [
-            { level: "Low Severity", area: "0–30%", desc: "Few plants show leaf blight symptoms\nLesions are small and scattered" },
-            { level: "Moderate Severity", area: "31–50%", desc: "Infection is noticeable in the affected area" },
-            { level: "Severe Severity", area: "51–100%", desc: "Majority of plants are affected\nExtensive leaf drying and wilting observed\nSignificant yield loss is expected" }
-          ]
-        },
-        {
-          title: "Rice Hispa (Insect Damage)",
-          items: [
-            { level: "Low Severity", area: "0–30%", desc: "Minor leaf scraping damage\nScattered feeding marks" },
-            { level: "Moderate Severity", area: "31–50%", desc: "Feeding damage is noticeable across the affected area\nLeaves show visible scraping and discoloration" },
-            { level: "Severe Severity", area: "51–100%", desc: "Extensive leaf damage in the affected area\nSevere impact on crop growth and yield" }
-          ]
-        },
-        {
-          title: "Leaf Scald",
-          items: [
-            { level: "Low Severity", area: "0–30%", desc: "Few scald lesions observed\nSymptoms are scattered and limited\nMinimal impact on crop" },
-            { level: "Moderate Severity", area: "31–50%", desc: "Lesions are increasing and spreading\nNoticeable damage across the affected area\nModerate reduction in plant health" },
-            { level: "Severe Severity", area: "51–100%", desc: "Large brown patches lesions dominate the affected area\nSevere leaf damage is evident\nHigh yield loss is expected" }
-          ]
-        },
-        {
-          title: "Rice Tungro Disease",
-          items: [
-            { level: "Low Severity", area: "0–30%", desc: "Few infected plants observed\nMild yellowing of leaves\nLimited spread of the disease" },
-            { level: "Moderate Severity", area: "31–50%", desc: "Infection is noticeable across the affected area\nYellow to yellow-orange discoloration visible\nSome stunting of plants" },
-            { level: "Severe Severity", area: "51–100%", desc: "Widespread infection across the affected area\nStrong discoloration\nSevere yield loss is expected" }
-          ]
-        },
-        {
-          title: "Fungal",
-          items: [
-            { level: "Low Severity", area: "0–30%", desc: "Scattered spots and lesions observed\nDiseases are present but limited\nMinimal effect on overall affected area" },
-            { level: "Moderate Severity", area: "31–50%", desc: "Mixed symptoms visible across the affected area\nLesions increasing in size and number\nModerate stress on plants" },
-            { level: "Severe Severity", area: "51–100%", desc: "Extensive and overlapping disease symptoms\nSignificant to severe yield loss expected" }
-          ]
-        }
-      ];
-
-      specificGuides.forEach(guide => {
-        py = ensurePageSpace(pdf, py, 40);
-        pdf.setFont("helvetica", "bold");
-        pdf.setFontSize(10.5);
-        pdf.setTextColor(156, 0, 150); // Theme Purple
-        pdf.text(guide.title, 14, py);
-        py += 5;
-        pdf.setTextColor(0, 0, 0);
-
-        guide.items.forEach(s => {
-          py = ensurePageSpace(pdf, py, 18);
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(9.5);
-          pdf.text(`• ${s.level}: ${s.area}`, 16, py);
-          py += 4.5;
-          pdf.setFont("helvetica", "normal");
-          pdf.setFontSize(9);
-          py = drawWrappedText(pdf, `Meaning:\n${s.desc}`, 20, py, 172, 4.5);
-          py += 3;
-        });
-        py += 4;
-      });
-
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(9);
-      
-      py = ensurePageSpace(pdf, py, 15);
-      pdf.text("Generated by OryzAID Results Dashboard", 14, py);
-
-      const file = `OryzAID_Report_${missionId()}_${generatedDate}.pdf`;
-      pdf.save(file);
-
-      showCenterNotif("PDF report downloaded successfully!", {
-        showOk: true,
-        okText: "OK",
-      });
     } catch (err) {
-      console.error("PDF export failed:", err);
-      showCenterNotif("PDF generation failed. Please try again.", {
-        showOk: true,
-        okText: "OK",
-      });
+      console.error(err);
+      showCenterNotif(`Export failed: ${err.message}`, { showOk: true });
     } finally {
-      document.body.classList.remove("pdf-exporting");
       btn.disabled = false;
       btn.textContent = oldText;
+      document.body.classList.remove("pdf-exporting");
     }
   });
 }
