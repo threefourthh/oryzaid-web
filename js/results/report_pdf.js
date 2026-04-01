@@ -332,14 +332,15 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
   
   let total = data.reduce((s, d) => s + d.val, 0) || 1;
   let svg = `<svg viewBox="-1 -1 2 2" style="width: 220px; height: 220px; transform: rotate(-90deg); overflow: visible;">`;
-  let legendHtml = '';
+  let legendHtml = `<div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 15px; width: 100%;">`;
+  
   let cumulativePercent = 0;
   
   data.forEach(slice => {
       if(slice.val === 0) return;
-      const slicePercent = slice.val / total;
       const startP = cumulativePercent;
-      cumulativePercent += slicePercent;
+      const slicePct = slice.val / total;
+      cumulativePercent += slicePct;
       const endP = cumulativePercent;
       
       const startX = Math.cos(2 * Math.PI * startP);
@@ -348,33 +349,32 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
       const endY = Math.sin(2 * Math.PI * endP);
       const largeArc = (endP - startP) > 0.5 ? 1 : 0;
       
-      if (slicePercent > 0.999) {
-          // Fallback if there is only 1 disease taking up 100%, draw full circle
-          svg += `<circle cx="0" cy="0" r="1" fill="${slice.color}" />`;
+      // Handle full circle edge case
+      if (slicePct === 1) {
+        svg += `<circle cx="0" cy="0" r="1" fill="${slice.color}" />`;
       } else {
-          svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
+        svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
       }
-
-      // Build the neat legend underneath the chart
-      const pctStr = (slicePercent * 100).toFixed(1) + '%';
+      
+      // Build the legend items below the chart
       legendHtml += `
-        <div style="display: flex; align-items: center; gap: 6px;">
-          <div style="width: 14px; height: 14px; background: ${slice.color}; border: 1px solid #e5e7eb; border-radius: 2px;"></div>
-          <span style="font-size: 13px; color: #374151; font-weight: 500;">${slice.label} (${pctStr})</span>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #111827; font-weight: 500;">
+          <div style="width: 12px; height: 12px; background-color: ${slice.color}; border-radius: 2px; border: 1px solid #d1d5db;"></div>
+          <span>${slice.label} (${(slicePct * 100).toFixed(1)}%)</span>
         </div>
       `;
   });
+  
   svg += `</svg>`;
+  legendHtml += `</div>`;
 
   return `
     <div style="display: flex; flex-direction: column; align-items: center; width: 340px;">
-      <div style="position: relative; width: 220px; height: 220px; margin-bottom: 24px;">
+      <div style="position: relative; width: 220px; height: 220px; display: flex; justify-content: center; align-items: center;">
         ${svg}
       </div>
-      <div style="display: flex; flex-wrap: wrap; justify-content: center; column-gap: 16px; row-gap: 8px; width: 100%; margin-bottom: 16px;">
-        ${legendHtml}
-      </div>
-      <div style="font-size: 16px; font-weight: bold; text-align: center; color: #000;">In %</div>
+      <div style="margin-top: 15px; font-size: 15px; font-weight: bold; color: #111827;">In %</div>
+      ${legendHtml}
     </div>
   `;
 }
@@ -496,7 +496,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
       const pieSvgHtml = buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald);
       const barSvgHtml = buildBarChartSVG(diseaseIncidence, pestIncidence);
-      const cScaldIncidence = ((cScald / totalImages) * 100).toFixed(0);
+      const cScaldIncidence = ((cScald / totalImages) * 100).toFixed(1);
 
       const htmlContent = `
         <style>
@@ -540,14 +540,13 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
 
           .p2-text-block { width: calc(100% - 80px); margin: 0 auto 40px; font-size: 15px; line-height: 1.6; text-align: justify; }
           
-          /* Updated Page 2 box layout to pull Leaf Scald INSIDE the box */
+          /* Updated Page 2 box layout to pull Leaf Scald inside box */
           .p2-pie-side { 
-              width: 340px;
               font-size: 15px; 
               line-height: 1.6; 
               background: #fff; 
               border-radius: 12px; 
-              padding: 24px; 
+              padding: 20px; 
               border: 1px solid #e5e7eb; 
               box-shadow: 0 4px 15px rgba(0,0,0,0.03); 
           }
@@ -602,24 +601,24 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
         <div class="pdf-page">
           <div class="page-title" style="margin-bottom: 20px;">DETECTION SUMMARY</div>
           
-          <div style="display: flex; justify-content: center; align-items: center; gap: 40px; padding: 0 40px;">
+          <div style="display: flex; justify-content: center; align-items: flex-start; gap: 40px; padding: 0 40px;">
             ${pieSvgHtml}
-            <div class="p2-pie-side">
-              The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
-              <br><br>
-              Leaf scald = ${cScaldIncidence}%
+            <div style="display: flex; flex-direction: column; width: 340px; margin-top: 15px;">
+              <div class="p2-pie-side">
+                The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
+                <br><br>
+              </div>
             </div>
           </div>
 
-          <div style="margin-top: 20px;">
+          <div style="margin-top: 10px;">
             ${barSvgHtml}
           </div>
 
-          <div class="p2-text-block" style="margin-top: 60px;">
+          <div class="p2-text-block" style="margin-top: 50px;">
             This report utilizes dual mapping techniques to present the finding. Disease detections are represented by red markers, while pest detections are indicated by orange markers. The level of severity is determined based on Disease Incidence, defined as the percentage of images containing identified threats, and is illustrated using the severity scale provided below. Furthermore, variations in color intensity correspond to the degree of severity, with stronger intensities indicating more severe conditions.
           </div>
         </div>
-
 
         <!-- PAGE 3 -->
         <div class="pdf-page">
