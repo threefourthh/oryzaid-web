@@ -6,7 +6,10 @@ const LOCAL_KEY = "maizeeye_local_plans_v1";
 
 window.addEventListener("DOMContentLoaded", () => {
 
-  initCenterNotif();
+  // Initialize the notification system
+  if (typeof initCenterNotif === "function") {
+    initCenterNotif();
+  }
   
   const localList = document.getElementById("localList");
   const cloudList = document.getElementById("cloudList");
@@ -85,6 +88,7 @@ function loadLocalPlans(el) {
     return;
   }
 
+  // Sort by newest first
   plans.sort(
     (a, b) =>
       Date.parse(b?.updated_at || b?.created_at || 0) -
@@ -95,26 +99,23 @@ function loadLocalPlans(el) {
     .map((p) => {
       const planId = p?.plan_id || "";
       const title = (p?.name || "").trim() || planId || "Untitled Plan";
-      const date = formatDate(p?.updated_at || p?.created_at);
 
       const polyCount = Array.isArray(p?.polygon) ? p.polygon.length : 0;
       const flightCount = Array.isArray(p?.flight) ? p.flight.length : 0;
-      const loc = String(p?.location_label || "").trim();
 
       const syncBadge = p?.cloud_synced
         ? `<span class="sync-badge synced">Synced ✓</span>`
         : `<span class="sync-badge local">Local only</span>`;
 
+      // ONLY SHOWING SYNC STATUS AND POLY/FLIGHT COUNT
+      // Date and Location have been deliberately removed here
       return `
         <div class="item" data-plan-id="${escapeHTML(planId)}" data-plan-name="${escapeHTML(p?.name || "")}">
           <div class="info">
             <b>${escapeHTML(title)}</b><br/>
             <small>
-              ${escapeHTML(date)}
-              ${loc ? ` • ${escapeHTML(loc)}` : ""}
-              • ${syncBadge}
-              • poly:${polyCount}
-              • flight:${flightCount}
+              ${syncBadge}
+              <span style="color: #6b7280; font-weight: 500; margin-left: 4px;">• poly:${polyCount} • flight:${flightCount}</span>
             </small>
           </div>
 
@@ -204,12 +205,6 @@ async function loadCloudMissions(el) {
           String(m?.mission_name || "").trim() ||
           String(id || "Mission").trim();
 
-        const date = formatDate(
-          m?.capture_time || m?.created_at || m?.timestamp_utc
-        );
-
-        const location = String(m?.field_location || "").trim();
-
         const area =
           m?.area_covered_ha !== undefined &&
           m?.area_covered_ha !== null &&
@@ -219,7 +214,9 @@ async function loadCloudMissions(el) {
 
         const status = String(m?.mission_status || "").trim();
 
-        const meta = [date, location, area, status ? `Status: ${status}` : ""]
+        // ONLY SHOWING AREA AND STATUS
+        // Date and Location have been deliberately removed here
+        const meta = [area, status ? `Status: ${status}` : ""]
           .filter(Boolean)
           .join(" • ");
 
@@ -294,11 +291,6 @@ function safeJSON(str, fallback) {
   } catch {
     return fallback;
   }
-}
-
-function formatDate(iso) {
-  const t = Date.parse(iso || "");
-  return Number.isFinite(t) ? new Date(t).toLocaleString() : "—";
 }
 
 function escapeHTML(s) {
