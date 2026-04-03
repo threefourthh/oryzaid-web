@@ -1,3 +1,4 @@
+// js/results/results_map.js
 import { apiGet } from "../core/api.js";
 
 export function initResultsMap({ mapId = "map" } = {}) {
@@ -95,11 +96,9 @@ export function initResultsMap({ mapId = "map" } = {}) {
   }
 
   function getIntensity(det) {
-    // If you are still sending area percent, use it for the heatmap glow size
     const area = safeNum(det.affected_area_percent);
     if (area != null) return Math.max(0.6, Math.min(1.0, 0.6 + (area / 100) * 0.4));
     
-    // Otherwise fallback to confidence to determine how bright the map glows
     const conf = safeNum(det.confidence);
     if (conf != null) {
         const normConf = conf > 1 ? conf / 100 : conf;
@@ -134,51 +133,65 @@ export function initResultsMap({ mapId = "map" } = {}) {
       textObj.textContent = "Average: 0% (No Detection)";
       textObj.style.color = "var(--muted)";
     } else if (val <= 30) {
-      textObj.textContent = `Average: ${val.toFixed(0)}% (Low / Slight)`;
+      textObj.textContent = `Average: ${val.toFixed(1)}% (Low / Slight)`;
       textObj.style.color = "#d97706"; 
     } else if (val <= 50) {
-      textObj.textContent = `Average: ${val.toFixed(0)}% (Moderate)`;
+      textObj.textContent = `Average: ${val.toFixed(1)}% (Moderate)`;
       textObj.style.color = "#ea580c"; 
     } else {
-      textObj.textContent = `Average: ${val.toFixed(0)}% (Severe)`;
+      textObj.textContent = `Average: ${val.toFixed(1)}% (Severe)`;
       textObj.style.color = "#dc2626"; 
     }
   }
 
   function updatePercentages(detections, mission) {
-    // 🔥 METHOD 1 MATH: Requires Total Images from the database. 
-    // Fallback to detections.length if missing so your UI doesn't crash during testing.
     const totalImages = safeNum(mission?.total_images) || Math.max(detections.length, 1);
 
-    const counts = { Bacterial_Leaf_Blight: 0, Fungal_Spot: 0, Leaf_Scald: 0, Tungro: 0, Rice_Hispa: 0 };
+    // 🔥 SCIENTIFICALLY DEFENSIBLE METHOD (Quadrat Sampling logic)
+    // We use a 'Set' to count unique image URLs. 
+    // If one image has 10 detections, it only counts as 1 infected "Quadrat" of the field.
+    const diseaseImages = new Set();
+    const pestImages = new Set();
     
-    let diseaseCount = 0;
-    let pestCount = 0;
+    const classImages = {
+      Bacterial_Leaf_Blight: new Set(),
+      Fungal_Spot: new Set(),
+      Leaf_Scald: new Set(),
+      Tungro: new Set(),
+      Rice_Hispa: new Set()
+    };
 
-    // Count how many pictures had each specific issue
     detections.forEach((det) => {
       const key = normalizeLabel(det.issue_type || det.label || det.class_name);
-      if (key in counts) counts[key]++;
+      // Use the image URL as the unique identifier. If missing, fallback to gps coordinates.
+      const uniqueImageId = det.image_url || `${det.latitude}_${det.longitude}`;
 
-      if (isDisease(key)) diseaseCount++;
-      else if (isPest(key)) pestCount++;
+      if (key in classImages) {
+        classImages[key].add(uniqueImageId);
+      }
+
+      if (isDisease(key)) {
+        diseaseImages.add(uniqueImageId);
+      } else if (isPest(key)) {
+        pestImages.add(uniqueImageId);
+      }
     });
 
-    // 🔥 METHOD 1 MATH: (Infected Pictures / Total Pictures) * 100
-    avgDiseaseSeverity = (diseaseCount / totalImages) * 100;
-    avgPestSeverity = (pestCount / totalImages) * 100;
+    // Calculate Spatial Incidence: (Unique Infected Images / Total Images) * 100
+    avgDiseaseSeverity = (diseaseImages.size / totalImages) * 100;
+    avgPestSeverity = (pestImages.size / totalImages) * 100;
 
     Object.keys(percentEls).forEach((key) => {
       const elInfo = percentEls[key];
       const spanEl = document.getElementById(elInfo.id);
       const rowEl = document.getElementById(elInfo.row);
       
-      // Calculate individual disease incidence %
-      let value = (counts[key] / totalImages) * 100;
+      // Calculate incidence for this specific class
+      let value = (classImages[key].size / totalImages) * 100;
       
-      if (spanEl) spanEl.textContent = `${Math.max(0, Math.min(100, value)).toFixed(0)}%`;
+      // Update UI with 1 decimal place precision! This replaces the rounded 6%
+      if (spanEl) spanEl.textContent = `${Math.max(0, Math.min(100, value)).toFixed(1)}%`;
 
-      // Smart Hiding: Hide the row if detection is 0%
       if (rowEl) {
         if (value === 0) rowEl.classList.add("hidden-row");
         else rowEl.classList.remove("hidden-row");
