@@ -146,15 +146,19 @@ async function captureExportMap(filterType) {
     host.style.position = "fixed";
     host.style.left = "-10000px";
     host.style.top = "0";
+    
+    // UPDATED: Use a 800x360 ratio to perfectly fit the PDF image slot without cropping
     host.style.width = "800px";
-    host.style.height = "600px";
+    host.style.height = "360px";
     host.style.background = "#ffffff";
     document.body.appendChild(host);
 
-    exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 19, preferCanvas: true });
+    // UPDATED: Max zoom set to 18 to prevent missing tiles
+    exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 18, preferCanvas: true });
 
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 19, maxNativeZoom: 18, crossOrigin: true
+    // UPDATED: Use the high-resolution Satellite Imagery instead of the Street Map
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 18, maxNativeZoom: 18, crossOrigin: true
     }).addTo(exportMap);
 
     const missionCenter = getMissionCenterLatLng(mission);
@@ -204,8 +208,8 @@ async function captureExportMap(filterType) {
       if (isPest(label) && filterType === 'pest') dotColor = "#f97316";    
 
       if (dotColor) {
-        // Radius drastically reduced to 2.0 so dots are tiny and precise on the PDF map
-        L.circleMarker(latlng, { radius: 2.0, fillColor: dotColor, color: "#ffffff", weight: 1, fillOpacity: 0.95 }).addTo(dotLayer);
+        // Radius bumped slightly to 3.0 so dots are crisp when the camera is zoomed out
+        L.circleMarker(latlng, { radius: 3.0, fillColor: dotColor, color: "#ffffff", weight: 1, fillOpacity: 0.95 }).addTo(dotLayer);
       }
     });
 
@@ -215,7 +219,8 @@ async function captureExportMap(filterType) {
     exportMap.invalidateSize(false);
 
     if (exportBounds && exportBounds.isValid()) {
-      exportMap.fitBounds(exportBounds, { padding: [10, 10], maxZoom: 19, animate: false });
+      // UPDATED: Added padding [60, 60] to intentionally zoom out and show more surrounding context
+      exportMap.fitBounds(exportBounds, { padding: [60, 60], maxZoom: 18, animate: false });
     } else {
       exportMap.setView(missionCenter, 18, { animate: false });
     }
