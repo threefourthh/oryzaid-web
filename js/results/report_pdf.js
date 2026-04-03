@@ -147,18 +147,18 @@ async function captureExportMap(filterType) {
     host.style.left = "-10000px";
     host.style.top = "0";
     
-    // UPDATED: Use a 800x360 ratio to perfectly fit the PDF image slot without cropping
+    // UPDATED: Standard 4:3 Ratio for a clean, zoomed-out capture
     host.style.width = "800px";
-    host.style.height = "360px";
+    host.style.height = "600px";
     host.style.background = "#ffffff";
     document.body.appendChild(host);
 
-    // UPDATED: Max zoom set to 18 to prevent missing tiles
-    exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 18, preferCanvas: true });
+    // UPDATED: Allow maxZoom 22 to guarantee no missing tiles
+    exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 22, preferCanvas: true });
 
-    // UPDATED: Use the high-resolution Satellite Imagery instead of the Street Map
-    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
-      maxZoom: 18, maxNativeZoom: 18, crossOrigin: true
+    // UPDATED: Using Google Maps Satellite to guarantee green imagery in rural areas
+    L.tileLayer("https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", {
+      maxZoom: 22, maxNativeZoom: 19, crossOrigin: true
     }).addTo(exportMap);
 
     const missionCenter = getMissionCenterLatLng(mission);
@@ -208,8 +208,8 @@ async function captureExportMap(filterType) {
       if (isPest(label) && filterType === 'pest') dotColor = "#f97316";    
 
       if (dotColor) {
-        // Radius bumped slightly to 3.0 so dots are crisp when the camera is zoomed out
-        L.circleMarker(latlng, { radius: 3.0, fillColor: dotColor, color: "#ffffff", weight: 1, fillOpacity: 0.95 }).addTo(dotLayer);
+        // UPDATED: Clean, distinct dots just like the live dashboard (Radius 5)
+        L.circleMarker(latlng, { radius: 5.0, fillColor: dotColor, color: "#ffffff", weight: 1.5, fillOpacity: 0.95 }).addTo(dotLayer);
       }
     });
 
@@ -219,10 +219,10 @@ async function captureExportMap(filterType) {
     exportMap.invalidateSize(false);
 
     if (exportBounds && exportBounds.isValid()) {
-      // UPDATED: Added padding [60, 60] to intentionally zoom out and show more surrounding context
-      exportMap.fitBounds(exportBounds, { padding: [60, 60], maxZoom: 18, animate: false });
+      // UPDATED: Padding set to 50 to zoom out perfectly and show surrounding field context
+      exportMap.fitBounds(exportBounds, { padding: [50, 50], maxZoom: 22, animate: false });
     } else {
-      exportMap.setView(missionCenter, 18, { animate: false });
+      exportMap.setView(missionCenter, 19, { animate: false });
     }
 
     await wait(450);
@@ -440,8 +440,11 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
           .pdf-details .col1 { width: 180px; }
           .pdf-section { text-align: center; margin-bottom: 25px; }
           .pdf-section-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-          .pdf-map-img { width: 480px; height: 215px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; }
-          .pdf-sev-container { width: 480px; margin: 8px auto 0 auto; text-align: left; }
+          
+          /* UPDATED: Map Image CSS sized beautifully for the new 4:3 capture */
+          .pdf-map-img { width: 440px; height: 330px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+          
+          .pdf-sev-container { width: 480px; margin: 12px auto 0 auto; text-align: left; }
           .pdf-sev-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
           .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 25px; }
           .pdf-severity-marker { position: absolute; top: -28px; width: 40px; margin-left: -20px; text-align: center; color: #000; z-index: 2; font-weight: 800; }
