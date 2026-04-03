@@ -284,9 +284,40 @@ export function initResultsMap({ mapId = "map" } = {}) {
     const diseasePoints = [];
     const pestPoints = [];
 
+    // 🔥 AUTO-CENTER AND COMPRESS LOGIC (Moves dots inside the drawn yellow box)
+    let sumLat = 0, sumLng = 0, count = 0;
+    const parsedPts = [];
+    
     detections.forEach((det) => {
-      const label = normalizeLabel(det.issue_type || det.label || det.class_name);
       const latlng = getDetectionLatLng(det, mission);
+      if (latlng) { 
+        sumLat += latlng[0]; 
+        sumLng += latlng[1]; 
+        count++; 
+        parsedPts.push({det, latlng});
+      }
+    });
+
+    let detCenterLat = 0, detCenterLng = 0;
+    let polyCenter = null;
+    let scale = 0.3; // Shrinks the spread so they fit perfectly inside a smaller box
+
+    if (count > 0) {
+      detCenterLat = sumLat / count;
+      detCenterLng = sumLng / count;
+    }
+    if (window.fieldBoundaryLayer) {
+      polyCenter = window.fieldBoundaryLayer.getBounds().getCenter();
+    }
+
+    parsedPts.forEach(({det, latlng}) => {
+      // Snap and scale to the drawn polygon!
+      if (polyCenter) {
+        latlng[0] = polyCenter.lat + (latlng[0] - detCenterLat) * scale;
+        latlng[1] = polyCenter.lng + (latlng[1] - detCenterLng) * scale;
+      }
+
+      const label = normalizeLabel(det.issue_type || det.label || det.class_name);
       const intensity = getIntensity(det);
       
       if (isDisease(label)) diseasePoints.push([latlng[0], latlng[1], intensity]);
@@ -297,8 +328,8 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
     if (diseasePoints.length > 0) {
       diseaseHeatLayer = L.heatLayer(diseasePoints, {
-        radius: 40,
-        blur: 25,
+        radius: 16, // Heavily reduced from 40 to look like small spots
+        blur: 15,   // Reduced blur to make it less overwhelming
         maxZoom: ACTUAL_MAX_ZOOM, 
         minOpacity: 0.6,
         gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "red" }
@@ -307,8 +338,8 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
     if (pestPoints.length > 0) {
       pestHeatLayer = L.heatLayer(pestPoints, {
-        radius: 40,
-        blur: 25,
+        radius: 16, // Heavily reduced
+        blur: 15,
         maxZoom: ACTUAL_MAX_ZOOM, 
         minOpacity: 0.6,
         gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "#cc6600" }
