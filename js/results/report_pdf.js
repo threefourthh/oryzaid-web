@@ -423,28 +423,29 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const primaryConcern = diseaseIncidence >= pestIncidence ? "diseases" : "pests";
       const cScaldIncidence = ((cScald.size / totalImages) * 100).toFixed(1);
 
-      // Pass the UNIQUE IMAGE counts to the Pie chart generator
       const pieSvgHtml = buildPieSVG(cTungro.size, cBlb.size, cFungal.size, cHispa.size, cScald.size);
       const barSvgHtml = buildBarChartSVG(diseaseIncidence, pestIncidence);
 
+      // 🔥 CSS UPDATED TO FIX OVERFLOW: 
+      // Map images are reduced to 400x300 (maintaining 4:3), and margins are tighter.
+      // This guarantees the pest severity bar will fit perfectly on Page 1!
       const htmlContent = `
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
           * { box-sizing: border-box; }
           .pdf-page { width: 800px; height: 1131px; background: #fff; color: #000; font-family: 'Inter', sans-serif; position: relative; overflow: hidden; }
           
-          /* Page 1 */
-          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 12px 0; font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
-          .pdf-details { margin: 20px 0 20px 100px; font-size: 15px; line-height: 2.0; font-weight: 500; }
+          /* Page 1 Details */
+          .pdf-header-green { background: linear-gradient(to right, #6ee7b7, #a7f3d0, #6ee7b7); text-align: center; padding: 10px 0; font-size: 18px; font-weight: 700; letter-spacing: 0.5px; }
+          .pdf-details { margin: 15px 0 15px 100px; font-size: 14px; line-height: 1.8; font-weight: 500; }
           .pdf-details .row { display: flex; }
           .pdf-details .col1 { width: 180px; }
-          .pdf-section { text-align: center; margin-bottom: 25px; }
+          
+          /* Page 1 Maps - Space Saving Layout */
+          .pdf-section { text-align: center; margin-bottom: 15px; }
           .pdf-section-title { font-size: 18px; font-weight: 600; margin-bottom: 8px; }
-          
-          /* UPDATED: Map Image CSS sized beautifully for the new 4:3 capture */
-          .pdf-map-img { width: 440px; height: 330px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-          
-          .pdf-sev-container { width: 480px; margin: 12px auto 0 auto; text-align: left; }
+          .pdf-map-img { width: 400px; height: 300px; object-fit: cover; margin: 0 auto; display: block; border: 1px solid #ddd; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+          .pdf-sev-container { width: 400px; margin: 8px auto 0 auto; text-align: left; }
           .pdf-sev-title { font-size: 14px; font-weight: 500; margin-bottom: 6px; }
           .pdf-severity-bar-wrap { position: relative; width: 100%; margin-top: 25px; }
           .pdf-severity-marker { position: absolute; top: -28px; width: 40px; margin-left: -20px; text-align: center; color: #000; z-index: 2; font-weight: 800; }
