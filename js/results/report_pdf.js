@@ -516,7 +516,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="p2-pie-side">
                 The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
                 <br><br>
-                Leaf scald = ${cScaldIncidence}%
+            
               </div>
             </div>
           </div>
