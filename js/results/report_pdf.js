@@ -40,7 +40,7 @@ function safeNum(value, fallback = null) {
 function getFieldValue(...values) {
   for (const v of values) {
     const t = String(v || "").trim();
-    if (t && t !== "—") return t;
+    if (t && t !== "—" && t !== "Unknown") return t;
   }
   return "—";
 }
@@ -147,16 +147,15 @@ async function captureExportMap(filterType) {
     host.style.left = "-10000px";
     host.style.top = "0";
     
-    // UPDATED: Standard 4:3 Ratio for a clean, zoomed-out capture
+    // Standard 4:3 Ratio for a clean, zoomed-out capture
     host.style.width = "800px";
     host.style.height = "600px";
     host.style.background = "#ffffff";
     document.body.appendChild(host);
 
-    // UPDATED: Allow maxZoom 22 to guarantee no missing tiles
     exportMap = L.map(host, { zoomControl: false, attributionControl: false, maxZoom: 22, preferCanvas: true });
 
-    // UPDATED: Using Google Maps Satellite to guarantee green imagery in rural areas
+    // Using Google Maps Satellite
     L.tileLayer("https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", {
       maxZoom: 22, maxNativeZoom: 19, crossOrigin: true
     }).addTo(exportMap);
@@ -174,7 +173,7 @@ async function captureExportMap(filterType) {
     const exportBounds = boundaryLayer && typeof boundaryLayer.getBounds === "function" ? boundaryLayer.getBounds() : null;
     const dotLayer = L.layerGroup();
 
-    // --- AUTO-CENTER AND COMPRESS LOGIC (For PDF) ---
+    // AUTO-CENTER AND COMPRESS LOGIC 
     let sumLat = 0, sumLng = 0, count = 0;
     detectionsToUse.forEach(det => {
       let latlng = getDetectionLatLng(det);
@@ -195,7 +194,6 @@ async function captureExportMap(filterType) {
       let latlng = getDetectionLatLng(det);
       if (!latlng) return;
       
-      // Apply same snap and compress to PDF markers
       if (polyCenter) {
           latlng[0] = polyCenter.lat + (latlng[0] - detCenterLat) * scale;
           latlng[1] = polyCenter.lng + (latlng[1] - detCenterLng) * scale;
@@ -208,7 +206,6 @@ async function captureExportMap(filterType) {
       if (isPest(label) && filterType === 'pest') dotColor = "#f97316";    
 
       if (dotColor) {
-        // UPDATED: Clean, distinct dots just like the live dashboard (Radius 5)
         L.circleMarker(latlng, { radius: 5.0, fillColor: dotColor, color: "#ffffff", weight: 1.5, fillOpacity: 0.95 }).addTo(dotLayer);
       }
     });
@@ -219,7 +216,6 @@ async function captureExportMap(filterType) {
     exportMap.invalidateSize(false);
 
     if (exportBounds && exportBounds.isValid()) {
-      // UPDATED: Padding set to 50 to zoom out perfectly and show surrounding field context
       exportMap.fitBounds(exportBounds, { padding: [50, 50], maxZoom: 22, animate: false });
     } else {
       exportMap.setView(missionCenter, 19, { animate: false });
@@ -278,7 +274,6 @@ function buildPieSVG(cTungro, cBlb, cFungal, cHispa, cScald) {
         svg += `<path d="M 0 0 L ${startX} ${startY} A 1 1 0 ${largeArc} 1 ${endX} ${endY} Z" fill="${slice.color}" />`;
       }
       
-      // Update Legend to clarify "img" (Images with Detection)
       legendHtml += `
         <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #111827; font-weight: 500;">
           <div style="width: 14px; height: 14px; background-color: ${slice.color}; border-radius: 3px; border: 1px solid #d1d5db;"></div>
@@ -321,7 +316,6 @@ function buildBarChartSVG(diseaseIncidence, pestIncidence) {
       </div>
 
       <div style="position: relative; height: 200px;">
-        <!-- Grid Lines -->
         <div style="position: absolute; bottom: 0; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
         <div style="position: absolute; bottom: 50px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
         <div style="position: absolute; bottom: 100px; left: 30px; right: 0; height: 1px; background: #e5e7eb;"></div>
@@ -334,7 +328,6 @@ function buildBarChartSVG(diseaseIncidence, pestIncidence) {
         <div style="position: absolute; bottom: 142px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal * 0.75)}</div>
         <div style="position: absolute; bottom: 192px; left: 0; font-size: 14px; color: #000;">${Math.round(maxVal)}</div>
         
-        <!-- Bars -->
         <div style="position: absolute; bottom: 1px; left: 70px; width: 140px; height: ${hD}px; background: #ff3b30; border-radius: 12px 12px 0 0; display: flex; justify-content: center; color: white; font-weight: normal; font-size: 14px; padding-top: 8px; box-sizing: border-box;">${diseaseIncidence.toFixed(1)}</div>
         <div style="position: absolute; bottom: 1px; left: 250px; width: 140px; height: ${hP}px; background: #fb923c; border-radius: 12px 12px 0 0; display: flex; justify-content: center; color: #000; font-weight: normal; font-size: 14px; padding-top: 8px; box-sizing: border-box;">${pestIncidence.toFixed(1)}</div>
       </div>
@@ -363,20 +356,23 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const mission = cachedMission || window.currentResultsMission || {};
       const missionCenter = getMissionCenterLatLng(mission);
 
-      showCenterNotif("Verifying exact location...", { showOk: false });
-      let finalPlaceName = null;
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${missionCenter[0]}&lon=${missionCenter[1]}`);
-        const data = await res.json();
-        if (data && data.address) {
-          const addr = data.address;
-          const local = addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || "";
-          const city = addr.town || addr.city || addr.municipality || addr.county || "";
-          finalPlaceName = [local, city].filter(Boolean).join(", ");
-        }
-      } catch(err) {}
+      // PRIORITIZE STORED DATABASE LOCATION OVER LIVE LOOKUP
+      // Only do the live lookup if the database field is totally missing
+      let place = getFieldValue(mission.field_location, mission.place, mission.mission_name, getText("metaPlace"));
 
-      const place = finalPlaceName || getFieldValue(mission.field_location, mission.place, mission.mission_name, getText("fieldLocation"));
+      if (!place || place === "—" || place === "Unknown") {
+        showCenterNotif("Verifying exact location...", { showOk: false });
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${missionCenter[0]}&lon=${missionCenter[1]}`);
+          const data = await res.json();
+          if (data && data.address) {
+            const addr = data.address;
+            const local = addr.village || addr.suburb || addr.neighbourhood || addr.hamlet || "";
+            const city = addr.town || addr.city || addr.municipality || addr.county || "";
+            place = [local, city].filter(Boolean).join(", ") || place;
+          }
+        } catch(err) {}
+      }
       
       showCenterNotif("Capturing maps...", { showOk: false });
       const diseaseMapShot = await captureExportMap('disease');
@@ -387,7 +383,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const altitudeM = getFieldValue(mission.flight_altitude_m, getText("metaAltitude"));
       const generatedDate = todayISO();
 
-      // 🔥 SCIENTIFIC INCIDENCE MATH (PDF VERSION)
+      // SCIENTIFIC INCIDENCE MATH (PDF VERSION)
       const cTungro = new Set();
       const cBlb = new Set();
       const cFungal = new Set();
@@ -426,9 +422,6 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
       const pieSvgHtml = buildPieSVG(cTungro.size, cBlb.size, cFungal.size, cHispa.size, cScald.size);
       const barSvgHtml = buildBarChartSVG(diseaseIncidence, pestIncidence);
 
-      // 🔥 CSS UPDATED TO FIX OVERFLOW: 
-      // Map images are reduced to 400x300 (maintaining 4:3), and margins are tighter.
-      // This guarantees the pest severity bar will fit perfectly on Page 1!
       const htmlContent = `
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -473,7 +466,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="row"><div class="col1">Mission ID</div><div>${mission.mission_id || mission.id || "Unknown"}</div></div>
               <div class="row"><div class="col1">Place</div><div>${place}</div></div>
               <div class="row"><div class="col1">Coordinates</div><div>${missionCenter[0].toFixed(6)}, ${missionCenter[1].toFixed(6)}</div></div>
-              <div class="row"><div class="col1">Area (ha)</div><div>${areaHa}</div></div>
+              <div class="row"><div class="col1">Area</div><div>${areaHa}</div></div>
               <div class="row"><div class="col1">Altitude (m)</div><div>${altitudeM}</div></div>
               <div class="row"><div class="col1">Generated</div><div>${generatedDate}</div></div>
           </div>
@@ -516,7 +509,7 @@ export function initReportPDF({ btnId = "downloadPdfBtn" } = {}) {
               <div class="p2-pie-side">
                 The report shows an overall ${severityInterpretation} severity pattern based on a <span style="color: #dc2626; font-weight: bold;">${overallIncidence.toFixed(1)}%</span> field incidence rate, with ${primaryConcern} being the primary concern.
                 <br><br>
-            
+                Leaf scald = ${cScaldIncidence}%
               </div>
             </div>
           </div>
