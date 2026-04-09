@@ -14,12 +14,12 @@ export function initResultsMap({ mapId = "map" } = {}) {
   map.setView([17.6534, 121.7334], 18);
 
   L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
     {
       maxZoom: ACTUAL_MAX_ZOOM,
       maxNativeZoom: MAX_NATIVE_ZOOM, 
       crossOrigin: true,
-      attribution: "Tiles &copy; Esri &mdash; Source: Esri",
+      attribution: "Tiles &copy; Google",
     }
   ).addTo(map);
 
@@ -31,9 +31,13 @@ export function initResultsMap({ mapId = "map" } = {}) {
   const diseaseMarkersLayer = L.layerGroup().addTo(map);
   const pestMarkersLayer = L.layerGroup().addTo(map);
 
-  let currentView = 'disease'; // 'disease' or 'pest'
+  let currentView = 'disease'; 
   let avgDiseaseSeverity = 0;
   let avgPestSeverity = 0;
+
+  const subAreaSelect = document.getElementById("subAreaSelect");
+  let allMissionDetections = [];
+  let currentMissionData = null;
 
   const percentEls = {
     Bacterial_Leaf_Blight: { id: "Commonrust", row: "row_Bacterial_Leaf_Blight" },
@@ -49,6 +53,97 @@ export function initResultsMap({ mapId = "map" } = {}) {
   const chipPest = document.getElementById("chipPest");
   const cardDisease = document.getElementById("disresult");
   const cardPest = document.getElementById("pestresult");
+
+  // ==========================================
+  // AREA SEGMENTATION LOGIC (FIXED CLIPPING)
+  // ==========================================
+  if (subAreaSelect) {
+    subAreaSelect.addEventListener("change", (e) => {
+      applySubAreaFilter(e.target.value);
+    });
+  }
+
+  function applySubAreaFilter(areaId) {
+    if (!currentMissionData || !allMissionDetections.length) return;
+
+    if (window.activeHighlightLayer) {
+      map.removeLayer(window.activeHighlightLayer);
+      window.activeHighlightLayer = null;
+    }
+    
+    clearMarkers(); 
+
+    if (areaId === 'overall') {
+      renderHeatmaps(allMissionDetections, currentMissionData);
+      if (fieldBoundaryLayer) {
+          map.fitBounds(fieldBoundaryLayer.getBounds(), { padding: [20, 20] });
+      }
+      window.dispatchEvent(new CustomEvent("maizeeye:mission-data-loaded", { detail: { mission: currentMissionData, detections: allMissionDetections } }));
+      return;
+    }
+
+    if (!window.fieldBoundaryLayer) return;
+
+    // 1. Convert Leaflet Boundary into a Turf.js Polygon
+    const latlngs = window.fieldBoundaryLayer.getLatLngs()[0];
+    const ring = latlngs.map(p => [p.lng, p.lat]);
+    // Ensure the polygon ring is closed
+    if (ring[0][0] !== ring[ring.length-1][0] || ring[0][1] !== ring[ring.length-1][1]) {
+        ring.push([...ring[0]]);
+    }
+    const fieldPoly = turf.polygon([ring]);
+
+    // 2. Determine bounds of the raw strip
+    const bounds = window.fieldBoundaryLayer.getBounds();
+    const north = bounds.getNorth();
+    const south = bounds.getSouth();
+    const east = bounds.getEast();
+    const west = bounds.getWest();
+
+    const latStep = (north - south) / 5;
+    const areaIndex = parseInt(areaId.replace('area', '')) - 1; 
+    
+    // Slice from North going South (Area 1 at the top)
+    const stripNorth = north - (latStep * areaIndex);
+    const stripSouth = stripNorth - latStep;
+
+    const stripCoords = [
+      [ [west, stripSouth], [east, stripSouth], [east, stripNorth], [west, stripNorth], [west, stripSouth] ]
+    ];
+    const stripPoly = turf.polygon(stripCoords);
+
+    // 3. PERFECT CLIPPING: Intersect the raw horizontal strip with the slanted field boundary
+    const activeFeature = turf.intersect(fieldPoly, stripPoly);
+    
+    if (!activeFeature) return;
+
+    // Draw the perfectly clipped polygon on the map
+    window.activeHighlightLayer = L.geoJSON(activeFeature, {
+      style: { color: "#3b82f6", weight: 3, fillColor: "#3b82f6", fillOpacity: 0.15 }
+    }).addTo(map);
+
+    // 4. Filter detections strictly within the clipped polygon
+    const filteredDetections = [];
+    allMissionDetections.forEach(det => {
+      let lat = parseFloat(det.latitude ?? det.lat ?? det.gps_lat ?? det.center_lat);
+      let lng = parseFloat(det.longitude ?? det.lng ?? det.lon ?? det.gps_lng ?? det.center_lng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        const pt = turf.point([lng, lat]);
+        // Using activeFeature guarantees points are inside both the strip AND the field
+        if (turf.booleanPointInPolygon(pt, activeFeature)) {
+          filteredDetections.push(det);
+        }
+      }
+    });
+
+    const totalImagesOverride = Math.ceil((safeNum(currentMissionData.total_images) || allMissionDetections.length || 1) / 5);
+    const subMissionData = { ...currentMissionData, total_images: totalImagesOverride };
+
+    renderHeatmaps(filteredDetections, subMissionData);
+    map.fitBounds(window.activeHighlightLayer.getBounds(), { padding: [20, 20] });
+    
+    window.dispatchEvent(new CustomEvent("maizeeye:mission-data-loaded", { detail: { mission: subMissionData, detections: filteredDetections } }));
+  }
 
   function safeNum(value, fallback = null) {
     const n = Number(value);
@@ -95,18 +190,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
     return [lat, lng];
   }
 
-  function getIntensity(det) {
-    const area = safeNum(det.affected_area_percent);
-    if (area != null) return Math.max(0.6, Math.min(1.0, 0.6 + (area / 100) * 0.4));
-    
-    const conf = safeNum(det.confidence);
-    if (conf != null) {
-        const normConf = conf > 1 ? conf / 100 : conf;
-        return Math.max(0.6, Math.min(1.0, 0.6 + (normConf * 0.4)));
-    }
-    return 0.8;
-  }
-
   function isDisease(label) {
     return ["Bacterial_Leaf_Blight", "Fungal_Spot", "Leaf_Scald", "Tungro"].includes(label);
   }
@@ -147,9 +230,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
   function updatePercentages(detections, mission) {
     const totalImages = safeNum(mission?.total_images) || Math.max(detections.length, 1);
 
-    // 🔥 SCIENTIFICALLY DEFENSIBLE METHOD (Quadrat Sampling logic)
-    // We use a 'Set' to count unique image URLs. 
-    // If one image has 10 detections, it only counts as 1 infected "Quadrat" of the field.
     const diseaseImages = new Set();
     const pestImages = new Set();
     
@@ -163,7 +243,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
     detections.forEach((det) => {
       const key = normalizeLabel(det.issue_type || det.label || det.class_name);
-      // Use the image URL as the unique identifier. If missing, fallback to gps coordinates.
       const uniqueImageId = det.image_url || `${det.latitude}_${det.longitude}`;
 
       if (key in classImages) {
@@ -177,7 +256,6 @@ export function initResultsMap({ mapId = "map" } = {}) {
       }
     });
 
-    // Calculate Spatial Incidence: (Unique Infected Images / Total Images) * 100
     avgDiseaseSeverity = (diseaseImages.size / totalImages) * 100;
     avgPestSeverity = (pestImages.size / totalImages) * 100;
 
@@ -186,10 +264,8 @@ export function initResultsMap({ mapId = "map" } = {}) {
       const spanEl = document.getElementById(elInfo.id);
       const rowEl = document.getElementById(elInfo.row);
       
-      // Calculate incidence for this specific class
       let value = (classImages[key].size / totalImages) * 100;
       
-      // Update UI with 1 decimal place precision! This replaces the rounded 6%
       if (spanEl) spanEl.textContent = `${Math.max(0, Math.min(100, value)).toFixed(1)}%`;
 
       if (rowEl) {
@@ -201,13 +277,18 @@ export function initResultsMap({ mapId = "map" } = {}) {
     updateSeverityUI();
   }
 
-  function clearLayers() {
+  function clearMarkers() {
     if (diseaseHeatLayer) { map.removeLayer(diseaseHeatLayer); diseaseHeatLayer = null; }
     if (pestHeatLayer) { map.removeLayer(pestHeatLayer); pestHeatLayer = null; }
-    if (fieldBoundaryLayer) { map.removeLayer(fieldBoundaryLayer); fieldBoundaryLayer = null; }
     diseaseMarkersLayer.clearLayers();
     pestMarkersLayer.clearLayers();
     detectionMarkersLayer.clearLayers();
+  }
+
+  function clearLayers() {
+    clearMarkers();
+    if (fieldBoundaryLayer) { map.removeLayer(fieldBoundaryLayer); fieldBoundaryLayer = null; }
+    if (window.activeHighlightLayer) { map.removeLayer(window.activeHighlightLayer); window.activeHighlightLayer = null; }
     window.fieldBoundaryLayer = null;
   }
 
@@ -281,69 +362,59 @@ export function initResultsMap({ mapId = "map" } = {}) {
       return;
     }
 
-    const diseasePoints = [];
-    const pestPoints = [];
-
-    // 🔥 AUTO-CENTER AND COMPRESS LOGIC (Moves dots inside the drawn yellow box)
-    let sumLat = 0, sumLng = 0, count = 0;
-    const parsedPts = [];
+    const diseaseMarkers = [];
+    const pestMarkers = [];
     
     detections.forEach((det) => {
+      // The latlngs coming here have ALREADY been compressed inside loadMission!
       const latlng = getDetectionLatLng(det, mission);
-      if (latlng) { 
-        sumLat += latlng[0]; 
-        sumLng += latlng[1]; 
-        count++; 
-        parsedPts.push({det, latlng});
-      }
-    });
+      if (!latlng) return;
 
-    let detCenterLat = 0, detCenterLng = 0;
-    let polyCenter = null;
-    let scale = 0.3; // Shrinks the spread so they fit perfectly inside a smaller box
-
-    if (count > 0) {
-      detCenterLat = sumLat / count;
-      detCenterLng = sumLng / count;
-    }
-    if (window.fieldBoundaryLayer) {
-      polyCenter = window.fieldBoundaryLayer.getBounds().getCenter();
-    }
-
-    parsedPts.forEach(({det, latlng}) => {
-      // Snap and scale to the drawn polygon!
-      if (polyCenter) {
-        latlng[0] = polyCenter.lat + (latlng[0] - detCenterLat) * scale;
-        latlng[1] = polyCenter.lng + (latlng[1] - detCenterLng) * scale;
-      }
+      // Extract the true original database coordinates if we saved them, 
+      // otherwise fallback to the visual coordinates.
+      const displayLat = det.original_lat !== undefined ? det.original_lat : latlng[0];
+      const displayLng = det.original_lng !== undefined ? det.original_lng : latlng[1];
 
       const label = normalizeLabel(det.issue_type || det.label || det.class_name);
-      const intensity = getIntensity(det);
       
-      if (isDisease(label)) diseasePoints.push([latlng[0], latlng[1], intensity]);
-      else if (isPest(label)) pestPoints.push([latlng[0], latlng[1], intensity]);
+      if (isDisease(label)) {
+        diseaseMarkers.push(L.circleMarker([latlng[0], latlng[1]], {
+          radius: 6,
+          fillColor: "#ef4444",
+          color: "#ffffff",
+          weight: 1.5,
+          fillOpacity: 0.95
+        }).bindPopup(`
+          <div style="text-align:center; font-family:'Inter', sans-serif;">
+            <strong style="color:#ef4444; font-size:14px; display:block; margin-bottom:4px;">${label.replace(/_/g, ' ')}</strong>
+            <span style="font-size:12px; color:#6b7280; display:block;">Lat: ${displayLat.toFixed(6)}</span>
+            <span style="font-size:12px; color:#6b7280; display:block;">Lng: ${displayLng.toFixed(6)}</span>
+          </div>
+        `));
+      } else if (isPest(label)) {
+        pestMarkers.push(L.circleMarker([latlng[0], latlng[1]], {
+          radius: 6,
+          fillColor: "#f97316",
+          color: "#ffffff",
+          weight: 1.5,
+          fillOpacity: 0.95
+        }).bindPopup(`
+          <div style="text-align:center; font-family:'Inter', sans-serif;">
+            <strong style="color:#f97316; font-size:14px; display:block; margin-bottom:4px;">${label.replace(/_/g, ' ')}</strong>
+            <span style="font-size:12px; color:#6b7280; display:block;">Lat: ${displayLat.toFixed(6)}</span>
+            <span style="font-size:12px; color:#6b7280; display:block;">Lng: ${displayLng.toFixed(6)}</span>
+          </div>
+        `));
+      }
     });
 
     updatePercentages(detections, mission);
 
-    if (diseasePoints.length > 0) {
-      diseaseHeatLayer = L.heatLayer(diseasePoints, {
-        radius: 16, // Heavily reduced from 40 to look like small spots
-        blur: 15,   // Reduced blur to make it less overwhelming
-        maxZoom: ACTUAL_MAX_ZOOM, 
-        minOpacity: 0.6,
-        gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "red" }
-      });
+    if (diseaseMarkers.length > 0) {
+      diseaseHeatLayer = L.layerGroup(diseaseMarkers);
     }
-
-    if (pestPoints.length > 0) {
-      pestHeatLayer = L.heatLayer(pestPoints, {
-        radius: 16, // Heavily reduced
-        blur: 15,
-        maxZoom: ACTUAL_MAX_ZOOM, 
-        minOpacity: 0.6,
-        gradient: { 0.4: "yellow", 0.7: "orange", 1.0: "#cc6600" }
-      });
+    if (pestMarkers.length > 0) {
+      pestHeatLayer = L.layerGroup(pestMarkers);
     }
 
     applyVisibility();
@@ -359,8 +430,51 @@ export function initResultsMap({ mapId = "map" } = {}) {
       clearLayers();
       renderFieldBoundary(mission);
 
+      // 🔥 THE FIX: Compress the raw GPS dots to physically fit inside the yellow box BEFORE saving them.
+      // This ensures Turf.js can actually find them when you select "Area 1" or "Area 2"
+      if (window.fieldBoundaryLayer && detections.length > 0) {
+        let sumLat = 0, sumLng = 0, validCount = 0;
+        detections.forEach(det => {
+          let lat = parseFloat(det.latitude ?? det.lat ?? det.gps_lat ?? det.center_lat);
+          let lng = parseFloat(det.longitude ?? det.lng ?? det.lon ?? det.gps_lng ?? det.center_lng);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            sumLat += lat;
+            sumLng += lng;
+            validCount++;
+          }
+        });
+
+        if (validCount > 0) {
+          let detCenterLat = sumLat / validCount;
+          let detCenterLng = sumLng / validCount;
+          let polyCenter = window.fieldBoundaryLayer.getBounds().getCenter();
+          
+          // Squeeze them tighter so they fit neatly inside the boundaries
+          let scale = 0.30; 
+
+          detections.forEach(det => {
+            let lat = parseFloat(det.latitude ?? det.lat ?? det.gps_lat ?? det.center_lat);
+            let lng = parseFloat(det.longitude ?? det.lng ?? det.lon ?? det.gps_lng ?? det.center_lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+              // SAVE THE TRUE DATABASE COORDINATES FIRST so the popup can read them
+              det.original_lat = lat;
+              det.original_lng = lng;
+
+              // NOW OVERWRITE WITH THE VISUAL CENTERED COORDINATES
+              det.latitude = polyCenter.lat + (lat - detCenterLat) * scale;
+              det.longitude = polyCenter.lng + (lng - detCenterLng) * scale;
+            }
+          });
+        }
+      }
+
+      allMissionDetections = detections;
+      currentMissionData = mission;
+      
+      if (subAreaSelect) subAreaSelect.value = 'overall';
+
       if (window.fieldBoundaryLayer) {
-        map.fitBounds(window.fieldBoundaryLayer.getBounds(), { padding: [10, 10], animate: false });
+        map.fitBounds(window.fieldBoundaryLayer.getBounds(), { padding: [20, 20], animate: false });
       }
 
       renderHeatmaps(detections, mission);

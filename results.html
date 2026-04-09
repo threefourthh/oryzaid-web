@@ -17,6 +17,42 @@
 
   <!-- Page CSS -->
   <link rel="stylesheet" href="css/results.css" />
+
+  <!-- NEW: Inline styles for the Area Selector to ensure it looks good immediately -->
+  <style>
+    .area-dropdown {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      background-color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      color: #1e293b;
+      cursor: pointer;
+      margin-top: 10px;
+      outline: none;
+      transition: all 0.2s ease;
+      appearance: none; /* Custom arrow */
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+    }
+    .area-dropdown:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+    .area-note {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 12px;
+      line-height: 1.4;
+      text-align: center;
+      font-family: 'Inter', sans-serif;
+    }
+  </style>
 </head>
 
 <body>
@@ -94,6 +130,28 @@
           </div>
         </section>
 
+        <!-- NEW: AREA SEGMENT SELECTOR -->
+        <section class="resultbox area-card" id="areaSelectorCard">
+          <div class="top">
+            <span>FIELD SEGMENT</span>
+            <!-- Reusing info icon as a fallback, you can replace with a map/grid icon later -->
+            <img src="assets/icons/info.png" alt="Field Segment">
+          </div>
+          
+          <div class="area-select-container">
+            <label for="subAreaSelect" class="sr-only" style="display:none;">Select Field Area</label>
+            <select id="subAreaSelect" class="area-dropdown">
+              <option value="overall">Overall Field (0.05 ha)</option>
+              <option value="area1">Area 1 (100 sq m)</option>
+              <option value="area2">Area 2 (100 sq m)</option>
+              <option value="area3">Area 3 (100 sq m)</option>
+              <option value="area4">Area 4 (100 sq m)</option>
+              <option value="area5">Area 5 (100 sq m)</option>
+            </select>
+          </div>
+          <p class="area-note">Select a specific flight path segment to view localized disease and pest incidence rates.</p>
+        </section>
+
         <!-- DISEASES -->
         <section class="resultbox active-card" id="disresult">
           <div class="top clickable-header" id="diseaseHeader" title="Click to view Diseases">
@@ -150,7 +208,7 @@
           </div>
         </section>
 
-        <!-- NEW: SEVERITY SCALE -->
+        <!-- SEVERITY SCALE -->
         <section class="resultbox severity-card" id="severityCard">
           <div class="top">
             <span id="severityTitle">DISEASE SEVERITY</span>
