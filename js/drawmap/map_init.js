@@ -1,9 +1,9 @@
 export function initMap({ mapId = "map" } = {}) {
-  // ✅ Hard limit zoom to avoid rural blank tiles
+  // ✅ Hard limit zoom updated to 22 for extreme drone detail
   const map = L.map(mapId, {
     zoomControl: false,
     minZoom: 3,
-    maxZoom: 18,
+    maxZoom: 22,
   });
 
   window.map = map;
@@ -16,58 +16,37 @@ export function initMap({ mapId = "map" } = {}) {
   L.control.zoom({ position: "topright" }).addTo(map);
 
   /* =========================
-     Base layers (Satellite + Map) + Labels overlay
+     Base layers (Google Hybrid + OSM)
   ========================= */
 
   const street = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxNativeZoom: 18,
-    maxZoom: 18,
+    maxNativeZoom: 19,
+    maxZoom: 22,
     attribution: "© OpenStreetMap contributors",
   });
 
-  const satellite = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  // ✅ ADDED: High-Detail Google Hybrid Map (Satellite + Labels)
+  const googleHybrid = L.tileLayer(
+    "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     {
-      maxNativeZoom: 18,
-      maxZoom: 18,
-      attribution: "Tiles © Esri",
+      maxZoom: 22,
+      maxNativeZoom: 19, 
+      crossOrigin: true,
+      attribution: "Tiles &copy; Google",
     }
   );
 
-  const labels = L.tileLayer(
-    "https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
-    {
-      maxNativeZoom: 18,
-      maxZoom: 18,
-      attribution: "Labels © Esri",
-      opacity: 0.95,
-    }
-  );
-
-  // Default: Satellite + Labels
-  satellite.addTo(map);
-  labels.addTo(map);
+  // Default: Google Hybrid
+  googleHybrid.addTo(map);
 
   // Layer switcher
   const baseMaps = {
-    "Satellite View": satellite,
-    "Map View": street,
+    "Satellite View (Google)": googleHybrid,
+    "Map View (OSM)": street,
   };
 
-  const overlays = {
-    Labels: labels,
-  };
-
-  L.control.layers(baseMaps, overlays, { position: "topright" }).addTo(map);
-
-  // Labels only on Satellite
-  map.on("baselayerchange", (e) => {
-    if (e.name === "Satellite View") {
-      if (!map.hasLayer(labels)) labels.addTo(map);
-    } else {
-      if (map.hasLayer(labels)) map.removeLayer(labels);
-    }
-  });
+  // We no longer need separate overlays because Google Hybrid includes the labels!
+  L.control.layers(baseMaps, {}, { position: "topright" }).addTo(map);
 
   /* =========================
      GPS center

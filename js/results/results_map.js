@@ -13,8 +13,9 @@ export function initResultsMap({ mapId = "map" } = {}) {
 
   map.setView([17.6534, 121.7334], 18);
 
+  // ADDED GOOGLE HYBRID SATELLITE FOR MAXIMUM DETAIL (lyrs=y)
   L.tileLayer(
-    "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+    "https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
     {
       maxZoom: ACTUAL_MAX_ZOOM,
       maxNativeZoom: MAX_NATIVE_ZOOM, 
